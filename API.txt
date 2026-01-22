@@ -1,104 +1,12 @@
 {
   "info": {
-    "name": "Rule Based Approval Engine",
-    "_postman_id": "b12a5e77-approval-engine",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Auth",
-      "item": [
-        {
-          "name": "Register",
-          "request": {
-            "method": "POST",
-            "url": "{{base_url}}/auth/register",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
-            }
-          }
-        },
-        {
-          "name": "Login",
-          "request": {
-            "method": "POST",
-            "url": "{{base_url}}/auth/login",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Leave Requests",
-      "item": [
-        {
-          "name": "Apply Leave",
-          "request": {
-            "method": "POST",
-            "url": "{{base_url}}/leaves/request",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"from_date\": \"2026-02-01\",\n  \"to_date\": \"2026-02-03\",\n  \"leave_type\": \"EARN\",\n  \"reason\": \"Family function\"\n}"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Expense Requests",
-      "item": [
-        {
-          "name": "Apply Expense",
-          "request": {
-            "method": "POST",
-            "url": "{{base_url}}/expenses/request",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"amount\": 5000,\n  \"category\": \"Travel\",\n  \"reason\": \"Client visit\"\n}"
-            }
-          }
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:8080"
-    },
-    {
-      "key": "token",
-      "value": ""
-    }
-  ]
-}
-
-admin Sophia@123
-$2a$10$P1zNG9KyO80vphq4/HcX8eFvAcmnlif24WQ9dSL5FLUCTKtelHyle
-manager Lee@123
-$2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
-{
-  "info": {
     "name": "Rule Based Approval Engine (Go + Postgres)",
     "_postman_id": "rb-approval-engine-001",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Complete API collection from Stage 1 to Stage 9"
+    "description": "Complete API collection with HttpOnly JWT cookies, Admin, and Auto-Reject"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8080" },
-    { "key": "token_employee", "value": "" },
-    { "key": "token_manager", "value": "" },
-    { "key": "token_admin", "value": "" }
+    { "key": "base_url", "value": "http://localhost:8080" }
   ],
   "item": [
 
@@ -136,7 +44,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
             "url": "{{base_url}}/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Lee Johnson\",\n  \"email\": \"manager@company.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"name\": \"Lee Johnson\",\n  \"email\": \"manager@company.com\",\n  \"password\": \"Lee@123\"\n}"
             }
           }
         },
@@ -147,7 +55,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
             "url": "{{base_url}}/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Sophia Carter\",\n  \"email\": \"admin@company.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"name\": \"Sophia Carter\",\n  \"email\": \"admin@company.com\",\n  \"password\": \"Sophia@123\"\n}"
             }
           }
         },
@@ -169,7 +77,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
             "url": "{{base_url}}/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"manager@company.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"email\": \"manager@company.com\",\n  \"password\": \"Lee@123\"\n}"
             }
           }
         },
@@ -180,8 +88,15 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
             "url": "{{base_url}}/auth/login",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"admin@company.com\",\n  \"password\": \"password123\"\n}"
+              "raw": "{\n  \"email\": \"admin@company.com\",\n  \"password\": \"Sophia@123\"\n}"
             }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/logout"
           }
         }
       ]
@@ -194,10 +109,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Get My Balances",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/api/balances",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ]
+            "url": "{{base_url}}/api/balances"
           }
         }
       ]
@@ -210,10 +122,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Apply Leave",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/leaves/request",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ],
+            "url": "{{base_url}}/api/leaves/request",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"from_date\": \"2026-02-01\",\n  \"to_date\": \"2026-02-03\",\n  \"leave_type\": \"EARN\",\n  \"reason\": \"Family function\"\n}"
@@ -224,40 +133,28 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Cancel Leave",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/leaves/1/cancel",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ]
+            "url": "{{base_url}}/api/leaves/1/cancel"
           }
         },
         {
           "name": "Pending Leaves (Manager/Admin)",
           "request": {
             "method": "GET",
-            "url": "{{base_url}}/leaves/pending",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_manager}}" }
-            ]
+            "url": "{{base_url}}/api/leaves/pending"
           }
         },
         {
           "name": "Approve Leave",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/leaves/1/approve",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_manager}}" }
-            ]
+            "url": "{{base_url}}/api/leaves/1/approve"
           }
         },
         {
           "name": "Reject Leave",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/leaves/1/reject",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_manager}}" }
-            ]
+            "url": "{{base_url}}/api/leaves/1/reject"
           }
         }
       ]
@@ -270,10 +167,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Apply Expense",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/expenses/request",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ],
+            "url": "{{base_url}}/api/expenses/request",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": 4000,\n  \"category\": \"Travel\",\n  \"reason\": \"Client visit\"\n}"
@@ -284,10 +178,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Cancel Expense",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/expenses/1/cancel",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ]
+            "url": "{{base_url}}/api/expenses/1/cancel"
           }
         }
       ]
@@ -300,10 +191,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Apply Discount",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/discounts/request",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ],
+            "url": "{{base_url}}/api/discounts/request",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"discount_percentage\": 8,\n  \"reason\": \"Loan benefit\"\n}"
@@ -314,10 +202,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Cancel Discount",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/discounts/1/cancel",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_employee}}" }
-            ]
+            "url": "{{base_url}}/api/discounts/1/cancel"
           }
         }
       ]
@@ -330,10 +215,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Add Holiday",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/admin/holidays",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_admin}}" }
-            ],
+            "url": "{{base_url}}/api/admin/holidays",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"date\": \"2026-03-25\",\n  \"description\": \"Company Foundation Day\"\n}"
@@ -344,20 +226,14 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Get Holidays",
           "request": {
             "method": "GET",
-            "url":": "{{base_url}}/admin/holidays",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_admin}}" }
-            ]
+            "url": "{{base_url}}/api/admin/holidays"
           }
         },
         {
           "name": "Delete Holiday",
           "request": {
             "method": "DELETE",
-            "url": "{{base_url}}/admin/holidays/1",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token_admin}}" }
-            ]
+            "url": "{{base_url}}/api/admin/holidays/1"
           }
         }
       ]
@@ -370,7 +246,7 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
           "name": "Run Auto Reject (Manual Trigger)",
           "request": {
             "method": "POST",
-            "url": "{{base_url}}/system/run-auto-reject"
+            "url": "{{base_url}}/api/system/run-auto-reject"
           }
         }
       ]
@@ -378,3 +254,4 @@ $2a$10$HsJ5yM7CV95J7rzdaAU4j.LS3R2XY60CyELKC25skRm6nsTxCXqty
 
   ]
 }
+

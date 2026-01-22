@@ -134,3 +134,62 @@ func ApproveLeave(role string, approverID, requestID int64) error {
 
 	return tx.Commit(ctx)
 }
+
+func RejectLeave(role string, approverID, requestID int64) error {
+	ctx := context.Background()
+	tx, err := database.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	var status string
+	var employeeID int64
+
+	err = tx.QueryRow(
+		ctx,
+		`SELECT employee_id, status
+		 FROM leave_requests
+		 WHERE id=$1`,
+		requestID,
+	).Scan(&employeeID, &status)
+
+	if err != nil {
+		return err
+	}
+
+	if status != "PENDING" {
+		return errors.New("request not pending")
+	}
+
+	// check requester role
+	var requesterRole string
+	err = tx.QueryRow(
+		ctx,
+		`SELECT role FROM users WHERE id=$1`,
+		employeeID,
+	).Scan(&requesterRole)
+
+	if role == "MANAGER" && requesterRole != "EMPLOYEE" {
+		return errors.New("manager can reject only employees")
+	}
+
+	if role == "ADMIN" && requesterRole != "MANAGER" {
+		return errors.New("admin can reject only managers")
+	}
+
+	_, err = tx.Exec(
+		ctx,
+		`UPDATE leave_requests
+		 SET status='REJECTED',
+		     approved_by_id=$1
+		 WHERE id=$2`,
+		approverID, requestID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}

@@ -94,7 +94,7 @@ func RegisterUser(name, email, password string) error {
 	return tx.Commit(ctx)
 }
 
-func LoginUser(email, password string) (string, error) {
+func LoginUser(email, password string) (string, string, error) {
 	var user models.User
 
 	err := database.DB.QueryRow(
@@ -104,12 +104,17 @@ func LoginUser(email, password string) (string, error) {
 	).Scan(&user.ID, &user.PasswordHash, &user.Role)
 
 	if err != nil {
-		return "", errors.New("invalid credentials")
+		return "", "", errors.New("invalid credentials")
 	}
 
 	if err := utils.CheckPassword(password, user.PasswordHash); err != nil {
-		return "", errors.New("invalid credentials")
+		return "", "", errors.New("invalid credentials")
 	}
 
-	return utils.GenerateToken(user.ID, user.Role)
+	token, err := utils.GenerateToken(user.ID, user.Role)
+	if err != nil {
+		return "", "", err
+	}
+
+	return token, user.Role, nil
 }

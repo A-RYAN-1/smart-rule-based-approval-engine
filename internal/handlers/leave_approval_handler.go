@@ -34,3 +34,21 @@ func ApproveLeave(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "leave approved"})
 }
+func RejectLeave(c *gin.Context) {
+	role := c.GetString("role")
+	approverID := c.GetInt64("user_id")
+
+	requestID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid request id"})
+		return
+	}
+
+	err = services.RejectLeave(role, approverID, requestID)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "leave rejected"})
+}

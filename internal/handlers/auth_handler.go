@@ -30,7 +30,6 @@ func Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{"message": "user registered"})
 }
-
 func Login(c *gin.Context) {
 	var req struct {
 		Email    string `json:"email"`
@@ -38,15 +37,42 @@ func Login(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
+		c.JSON(400, gin.H{"error": "invalid input"})
 		return
 	}
 
-	token, err := services.LoginUser(req.Email, req.Password)
+	token, role, err := services.LoginUser(req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(401, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	// ✅ Set JWT as HttpOnly cookie
+	c.SetCookie(
+		"access_token", // name
+		token,          // value
+		3600*24,        // maxAge (1 day)
+		"/",            // path
+		"",             // domain (localhost ok)
+		false,          // secure (true in prod HTTPS)
+		true,           // httpOnly ✅
+	)
+
+	c.JSON(200, gin.H{
+		"message": "login successful",
+		"role":    role,
+	})
+}
+func Logout(c *gin.Context) {
+	c.SetCookie(
+		"access_token",
+		"",
+		-1, // expire immediately
+		"/",
+		"",
+		false,
+		true,
+	)
+
+	c.JSON(200, gin.H{"message": "logged out"})
 }

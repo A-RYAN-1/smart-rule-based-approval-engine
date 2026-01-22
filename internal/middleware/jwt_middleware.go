@@ -1,37 +1,34 @@
 package middleware
 
 import (
-	"net/http"
-	"strings"
+	"rule-based-approval-engine/internal/utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 var jwtSecret = []byte("super-secret-key")
 
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+
+		// ✅ Read token from HttpOnly cookie
+		tokenString, err := c.Cookie("access_token")
+		if err != nil {
+			c.JSON(401, gin.H{"error": "unauthorized"})
+			c.Abort()
 			return
 		}
 
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-
-		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		claims, err := utils.ValidateToken(tokenString)
+		if err != nil {
+			c.JSON(401, gin.H{"error": "invalid token"})
+			c.Abort()
 			return
 		}
 
-		claims := token.Claims.(jwt.MapClaims)
-		c.Set("user_id", int64(claims["user_id"].(float64)))
-		c.Set("role", claims["role"].(string))
+		// Set values in context
+		c.Set("user_id", claims.UserID)
+		c.Set("role", claims.Role)
 
 		c.Next()
 	}

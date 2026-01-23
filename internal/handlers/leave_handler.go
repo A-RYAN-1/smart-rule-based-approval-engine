@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"net/http"
 	"strconv"
 	"time"
 
+	"rule-based-approval-engine/internal/apperrors"
 	"rule-based-approval-engine/internal/services"
 	"rule-based-approval-engine/internal/utils"
 
@@ -19,26 +21,101 @@ type LeaveApplyRequest struct {
 
 func ApplyLeave(c *gin.Context) {
 	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "unauthorized user",
+		})
+		return
+	}
 
 	var req LeaveApplyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": "invalid input"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid request payload",
+		})
 		return
 	}
 
-	from, _ := time.Parse("2006-01-02", req.FromDate)
-	to, _ := time.Parse("2006-01-02", req.ToDate)
+	// ---- Date parsing with validation ----
+	from, err := time.Parse("2006-01-02", req.FromDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from_date format (YYYY-MM-DD)",
+		})
+		return
+	}
+
+	to, err := time.Parse("2006-01-02", req.ToDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid to_date format (YYYY-MM-DD)",
+		})
+		return
+	}
 
 	days := utils.CalculateLeaveDays(from, to)
-
-	err := services.ApplyLeave(userID, from, to, days, req.LeaveType, req.Reason)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+	if days <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "leave duration must be at least one day",
+		})
 		return
 	}
 
-	c.JSON(201, gin.H{"message": "leave request submitted"})
+	// ---- Call service ----
+	message, err := services.ApplyLeave(
+		userID,
+		from,
+		to,
+		days,
+		req.LeaveType,
+		req.Reason,
+	)
+
+	if err != nil {
+		handleApplyLeaveError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": message,
+	})
 }
+func handleApplyLeaveError(c *gin.Context, err error) {
+
+	switch err {
+
+	case apperrors.ErrLeaveBalanceExceeded:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "insufficient leave balance",
+		})
+
+	case apperrors.ErrInvalidLeaveDays:
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid leave duration",
+		})
+
+	case apperrors.ErrRuleNotFound:
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "leave approval rules not configured",
+		})
+
+	case apperrors.ErrUserNotFound:
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "user not found",
+		})
+
+	case apperrors.ErrLeaveBalanceMissing:
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "leave balance not found",
+		})
+
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to apply leave",
+		})
+	}
+}
+
 func CancelLeave(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 

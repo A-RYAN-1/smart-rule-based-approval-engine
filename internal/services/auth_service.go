@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
+	"strings"
 
 	"rule-based-approval-engine/internal/database"
 	"rule-based-approval-engine/internal/models"
@@ -20,8 +22,35 @@ var (
 func RegisterUser(name, email, password string) error {
 	ctx := context.Background()
 
+	log.Println("RegisterUser started:", email)
+
+	// 🔒 Mandatory checks
+	if strings.TrimSpace(email) == "" {
+		log.Println("Validation failed: email empty")
+		return errors.New("email is required")
+	}
+	if strings.TrimSpace(password) == "" {
+		log.Println("Validation failed: password empty")
+		return errors.New("password is required")
+	}
+
+	// 📧 Email validation (NO REGEX)
+	if !isValidEmail(email) {
+		log.Println("Validation failed: invalid email format:", email)
+		return errors.New("invalid email format")
+	}
+
+	// 🔐 Password validation (NO REGEX)
+	if !isValidPassword(password) {
+		log.Println("Validation failed: weak password")
+		return errors.New(
+			"password must be at least 8 characters long, contain one uppercase letter and one special character",
+		)
+	}
+
 	tx, err := database.DB.Begin(ctx)
 	if err != nil {
+		log.Println("DB Begin failed:", err)
 		return err
 	}
 	defer tx.Rollback(ctx)
@@ -35,15 +64,18 @@ func RegisterUser(name, email, password string) error {
 	).Scan(&count)
 
 	if err != nil {
+		log.Println("Email uniqueness query failed:", err)
 		return err
 	}
 	if count > 0 {
+		log.Println("Email already registered:", email)
 		return errors.New("email already registered")
 	}
 
 	// Hash password
 	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
+		log.Println("Password hashing failed:", err)
 		return err
 	}
 
@@ -69,6 +101,8 @@ func RegisterUser(name, email, password string) error {
 		managerID = &ManagerID
 	}
 
+	log.Printf("Role decided: role=%s grade=%d managerID=%v\n", role, gradeID, managerID)
+
 	// Insert user
 	var userID int64
 	err = tx.QueryRow(
@@ -80,19 +114,81 @@ func RegisterUser(name, email, password string) error {
 	).Scan(&userID)
 
 	if err != nil {
+		log.Println("User insert failed:", err)
 		return err
 	}
 
+	log.Println("User inserted successfully, userID:", userID)
+
 	// Initialize balances ONLY for employee & manager
 	if role != "ADMIN" {
+		log.Println("Initializing balances for user:", userID)
+
 		err = InitializeBalances(tx, userID, gradeID)
 		if err != nil {
+			log.Println("InitializeBalances failed:", err)
 			return err
 		}
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		log.Println("Transaction commit failed:", err)
+		return err
+	}
+
+	log.Println("RegisterUser completed successfully:", email)
+	return nil
 }
+
+/* =======================
+   VALIDATIONS (NO REGEX)
+   ======================= */
+
+func isValidEmail(email string) bool {
+	email = strings.TrimSpace(email)
+
+	// must contain exactly one '@'
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return false
+	}
+
+	// domain must contain at least one '.'
+	if !strings.Contains(parts[1], ".") {
+		return false
+	}
+
+	// basic sanity checks
+	if parts[0] == "" || parts[1] == "" {
+		return false
+	}
+
+	return true
+}
+
+func isValidPassword(password string) bool {
+	if len(password) < 8 {
+		return false
+	}
+
+	hasUpper := false
+	hasSpecial := false
+
+	for _, ch := range password {
+		if ch >= 'A' && ch <= 'Z' {
+			hasUpper = true
+		}
+		if strings.ContainsRune("!@#$%^&*()_+-=[]{}|;:'\",.<>/?", ch) {
+			hasSpecial = true
+		}
+	}
+
+	return hasUpper && hasSpecial
+}
+
+/* =======================
+   LOGIN
+   ======================= */
 
 func LoginUser(email, password string) (string, string, error) {
 	var user models.User

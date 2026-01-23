@@ -44,24 +44,37 @@ func GetPendingLeaveRequests(role string, approverID int64) ([]map[string]interf
 	defer rows.Close()
 
 	var result []map[string]interface{}
-	for rows.Next() {
-		var id int64
-		var name, leaveType string
-		var from, to time.Time
 
-		rows.Scan(&id, &name, &from, &to, &leaveType)
+	for rows.Next() {
+		var (
+			id        int64
+			name      string
+			leaveType string
+			fromDate  time.Time
+			toDate    time.Time
+		)
+
+		if err := rows.Scan(&id, &name, &fromDate, &toDate, &leaveType); err != nil {
+			return nil, err
+		}
 
 		result = append(result, map[string]interface{}{
 			"id":         id,
 			"employee":   name,
-			"from_date":  from,
-			"to_date":    to,
+			"from_date":  fromDate.Format("2006-01-02"),
+			"to_date":    toDate.Format("2006-01-02"),
 			"leave_type": leaveType,
 		})
 	}
 
+	// Final safety check
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return result, nil
 }
+
 func ApproveLeave(role string, approverID, requestID int64) error {
 	ctx := context.Background()
 	tx, err := database.DB.Begin(ctx)

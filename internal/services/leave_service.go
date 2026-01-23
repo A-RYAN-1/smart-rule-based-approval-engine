@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
+	"rule-based-approval-engine/internal/apperrors"
 	"rule-based-approval-engine/internal/database"
 	"rule-based-approval-engine/internal/utils"
 )
@@ -16,16 +18,29 @@ func ApplyLeave(
 	days int,
 	leaveType string,
 	reason string,
-) error {
+) (string, error) {
+
+	// ---- Input validations ----
+	if userID <= 0 {
+		return "", errors.New("invalid user")
+	}
+
+	if days <= 0 {
+		return "", apperrors.ErrInvalidLeaveDays
+	}
+
+	if from.After(to) {
+		return "", errors.New("from date cannot be after to date")
+	}
 
 	ctx := context.Background()
 	tx, err := database.DB.Begin(ctx)
 	if err != nil {
-		return err
+		return "", errors.New("unable to start transaction")
 	}
 	defer tx.Rollback(ctx)
 
-	// 1. Fetch remaining leave balance
+	// ---- Fetch remaining leave balance ----
 	var remaining int
 	err = tx.QueryRow(
 		ctx,
@@ -33,15 +48,18 @@ func ApplyLeave(
 		userID,
 	).Scan(&remaining)
 
+	if err == sql.ErrNoRows {
+		return "", apperrors.ErrLeaveBalanceMissing
+	}
 	if err != nil {
-		return err
+		return "", errors.New("failed to fetch leave balance")
 	}
 
 	if days > remaining {
-		return errors.New("leave balance exceeded")
+		return "", apperrors.ErrLeaveBalanceExceeded
 	}
 
-	// 2. Fetch user grade
+	// ---- Fetch user grade ----
 	var gradeID int64
 	err = tx.QueryRow(
 		ctx,
@@ -49,55 +67,64 @@ func ApplyLeave(
 		userID,
 	).Scan(&gradeID)
 
+	if err == sql.ErrNoRows {
+		return "", apperrors.ErrUserNotFound
+	}
 	if err != nil {
-		return err
+		return "", errors.New("failed to fetch user grade")
 	}
 
-	// 3. Fetch rule
+	// ---- Fetch rule ----
 	rule, err := GetRule("LEAVE", gradeID)
 	if err != nil {
-		return err
+		return "", apperrors.ErrRuleNotFound
 	}
 
-	// 4. Decide
+	// ---- Decision ----
 	decision := Decide("LEAVE", rule.Condition, float64(days))
 
 	status := "PENDING"
+	message := "Leave submitted to manager for approval"
+
 	if decision == "AUTO_APPROVE" {
 		status = "AUTO_APPROVED"
+		message = "Leave approved by system"
 	}
 
-	// 5. Insert leave request
-	var requestID int64
-	err = tx.QueryRow(
+	// ---- Insert request ----
+	_, err = tx.Exec(
 		ctx,
-		`INSERT INTO leave_requests 
+		`INSERT INTO leave_requests
 		 (employee_id, from_date, to_date, reason, leave_type, status, rule_id)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7)
-		 RETURNING id`,
+		 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
 		userID, from, to, reason, leaveType, status, rule.ID,
-	).Scan(&requestID)
+	)
 
 	if err != nil {
-		return err
+		return "", errors.New("failed to create leave request")
 	}
 
-	// 6. Deduct balance if auto-approved
+	// ---- Deduct balance if auto-approved ----
 	if status == "AUTO_APPROVED" {
 		_, err = tx.Exec(
 			ctx,
-			`UPDATE leaves 
+			`UPDATE leaves
 			 SET remaining_count = remaining_count - $1
 			 WHERE user_id=$2`,
 			days, userID,
 		)
 		if err != nil {
-			return err
+			return "", errors.New("failed to update leave balance")
 		}
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return "", errors.New("failed to commit transaction")
+	}
+
+	return message, nil
 }
+
 func CancelLeave(userID, requestID int64) error {
 	ctx := context.Background()
 	tx, err := database.DB.Begin(ctx)

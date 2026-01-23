@@ -51,6 +51,7 @@ func Register(r *gin.Engine) {
 		{
 			leaves.POST("/request", handlers.ApplyLeave)
 			leaves.POST("/:id/cancel", handlers.CancelLeave)
+			leaves.GET("/my", handlers.GetMyLeaves)
 
 			// Manager/Admin actions
 			leaves.GET("/pending", handlers.GetPendingLeaves)
@@ -61,10 +62,12 @@ func Register(r *gin.Engine) {
 		// -----------------------
 		// EXPENSES
 		// -----------------------
+
 		expenses := protected.Group("/expenses")
 		{
 			expenses.POST("/request", handlers.ApplyExpense)
 			expenses.POST("/:id/cancel", handlers.CancelExpense)
+			expenses.GET("/my", handlers.GetMyExpenses)
 
 			// Manager/Admin (if you add later)
 			// expenses.GET("/pending", handlers.GetPendingExpenses)
@@ -79,6 +82,7 @@ func Register(r *gin.Engine) {
 		{
 			discounts.POST("/request", handlers.ApplyDiscount)
 			discounts.POST("/:id/cancel", handlers.CancelDiscount)
+			discounts.GET("/my", handlers.GetMyDiscounts)
 
 			// Manager/Admin (if you add later)
 			// discounts.GET("/pending", handlers.GetPendingDiscounts)

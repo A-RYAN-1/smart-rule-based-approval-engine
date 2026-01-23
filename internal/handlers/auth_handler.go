@@ -27,7 +27,7 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
+	
 	c.JSON(http.StatusCreated, gin.H{"message": "user registered"})
 }
 func Login(c *gin.Context) {

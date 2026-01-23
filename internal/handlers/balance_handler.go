@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log"
 
 	"rule-based-approval-engine/internal/database"
 
@@ -14,7 +15,7 @@ func GetMyBalances(c *gin.Context) {
 	var leaveTotal, leaveRemaining int
 	var expenseTotal, expenseRemaining float64
 	var discountTotal, discountRemaining float64
-
+	
 	err := database.DB.QueryRow(
 		context.Background(),
 		`SELECT total_allocated, remaining_count FROM leaves WHERE user_id=$1`,
@@ -22,6 +23,7 @@ func GetMyBalances(c *gin.Context) {
 	).Scan(&leaveTotal, &leaveRemaining)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "leave fetch failed"})
+		log.Printf("Error fetching leave balance: %v", err)
 		return
 	}
 	err = database.DB.QueryRow(

@@ -80,6 +80,7 @@ func ApplyLeave(c *gin.Context) {
 		"message": message,
 	})
 }
+
 func handleApplyLeaveError(c *gin.Context, err error) {
 
 	switch err {
@@ -108,6 +109,10 @@ func handleApplyLeaveError(c *gin.Context, err error) {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "leave balance not found",
 		})
+	case apperrors.ErrLeaveOverlap:
+	c.JSON(http.StatusBadRequest, gin.H{
+		"error": err.Error(),
+	})
 
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{

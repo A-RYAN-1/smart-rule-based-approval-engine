@@ -51,7 +51,7 @@ func Register(r *gin.Engine) {
 		{
 			leaves.POST("/request", handlers.ApplyLeave)
 			leaves.POST("/:id/cancel", handlers.CancelLeave)
-			leaves.GET("/my", handlers.GetMyLeaves)
+			leaves.GET("/my", handlers.GetMyLeaves) 
 
 			// Manager/Admin actions
 			leaves.GET("/pending", handlers.GetPendingLeaves)

@@ -2,13 +2,14 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
 	"rule-based-approval-engine/internal/apperrors"
 	"rule-based-approval-engine/internal/database"
 	"rule-based-approval-engine/internal/utils"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func ApplyLeave(
@@ -19,6 +20,7 @@ func ApplyLeave(
 	leaveType string,
 	reason string,
 ) (string, error) {
+	ctx := context.Background()
 
 	// ---- Input validations ----
 	if userID <= 0 {
@@ -32,8 +34,16 @@ func ApplyLeave(
 	if from.After(to) {
 		return "", errors.New("from date cannot be after to date")
 	}
+	// ---- Overlap validation ----
+	overlap, err := HasOverlappingLeave(ctx, userID, from, to)
+	if err != nil {
+		return "", errors.New("unable to verify existing leave requests")
+	}
 
-	ctx := context.Background()
+	if overlap {
+		return "", apperrors.ErrLeaveOverlap
+	}
+
 	tx, err := database.DB.Begin(ctx)
 	if err != nil {
 		return "", errors.New("unable to start transaction")
@@ -48,7 +58,7 @@ func ApplyLeave(
 		userID,
 	).Scan(&remaining)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return "", apperrors.ErrLeaveBalanceMissing
 	}
 	if err != nil {
@@ -67,7 +77,7 @@ func ApplyLeave(
 		userID,
 	).Scan(&gradeID)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return "", apperrors.ErrUserNotFound
 	}
 	if err != nil {
@@ -125,6 +135,42 @@ func ApplyLeave(
 	return message, nil
 }
 
+func HasOverlappingLeave(
+	ctx context.Context,
+	userID int64,
+	fromDate, toDate time.Time,
+) (bool, error) {
+
+	var dummy int
+
+	err := database.DB.QueryRow(
+		ctx,
+		`SELECT 1
+		 FROM leave_requests
+		 WHERE employee_id = $1
+		   AND status IN ('PENDING', 'APPROVED', 'AUTO_APPROVED')
+		   AND from_date <= $2
+		   AND to_date >= $3
+		 LIMIT 1`,
+		userID,
+		toDate,
+		fromDate,
+	).Scan(&dummy)
+
+	// pgx NO ROWS = no overlap
+	if err == pgx.ErrNoRows {
+		return false, nil
+	}
+
+	//  real system error
+	if err != nil {
+		return false, err
+	}
+
+	//  overlap exists
+	return true, nil
+}
+
 func CancelLeave(userID, requestID int64) error {
 	ctx := context.Background()
 	tx, err := database.DB.Begin(ctx)
@@ -141,7 +187,7 @@ func CancelLeave(userID, requestID int64) error {
 		`SELECT status, from_date, to_date 
 		 FROM leave_requests 
 		 WHERE id=$1 AND employee_id=$2`,
-		requestID, userID,
+		requestID, userID, 
 	).Scan(&status, &from, &to)
 
 	if err != nil {

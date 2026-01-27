@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"rule-based-approval-engine/internal/database"
@@ -10,7 +11,7 @@ import (
 func GetMyLeaveRequests(userID int64) ([]map[string]interface{}, error) {
 	rows, err := database.DB.Query(
 		context.Background(),
-		`SELECT id, leave_type, from_date, to_date, status, approval_comment, created_at
+		`SELECT id, leave_type, from_date, to_date, status, reason, approval_comment, created_at
 		 FROM leave_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`,
@@ -30,6 +31,7 @@ func GetMyLeaveRequests(userID int64) ([]map[string]interface{}, error) {
 			fromDate  time.Time
 			toDate    time.Time
 			status    string
+			reason    string
 			comment   *string
 			createdAt time.Time
 		)
@@ -40,6 +42,7 @@ func GetMyLeaveRequests(userID int64) ([]map[string]interface{}, error) {
 			&fromDate,
 			&toDate,
 			&status,
+			&reason,
 			&comment,
 			&createdAt,
 		); err != nil {
@@ -53,6 +56,7 @@ func GetMyLeaveRequests(userID int64) ([]map[string]interface{}, error) {
 			"from_date":  fromDate.Format("2006-01-02"),
 			"to_date":    toDate.Format("2006-01-02"),
 			"status":     status,
+			"reason":     reason,
 			"created_at": createdAt.Format(time.RFC3339),
 		}
 
@@ -76,7 +80,7 @@ func GetMyLeaveRequests(userID int64) ([]map[string]interface{}, error) {
 func GetMyExpenseRequests(userID int64) ([]map[string]interface{}, error) {
 	rows, err := database.DB.Query(
 		context.Background(),
-		`SELECT id, amount, category, status, approval_comment, created_at
+		`SELECT id, amount, category, status, reason, approval_comment, created_at
 		 FROM expense_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`,
@@ -95,17 +99,29 @@ func GetMyExpenseRequests(userID int64) ([]map[string]interface{}, error) {
 			amount    float64
 			category  string
 			status    string
+			reason    string
 			comment   *string
 			createdAt time.Time
 		)
 
-		rows.Scan(&id, &amount, &category, &status, &comment, &createdAt)
+		if err := rows.Scan(
+			&id,
+			&amount,
+			&category,
+			&status,
+			&reason,
+			&comment,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
 
 		result = append(result, map[string]interface{}{
 			"id":               id,
 			"amount":           amount,
 			"category":         category,
 			"status":           status,
+			"reason":           reason,
 			"approval_comment": comment,
 			"created_at":       createdAt.Format(time.RFC3339),
 		})
@@ -116,7 +132,7 @@ func GetMyExpenseRequests(userID int64) ([]map[string]interface{}, error) {
 func GetMyDiscountRequests(userID int64) ([]map[string]interface{}, error) {
 	rows, err := database.DB.Query(
 		context.Background(),
-		`SELECT id, discount_percentage, status, approval_comment, created_at
+		`SELECT id, discount_percentage, status, reason, approval_comment, created_at
 		 FROM discount_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`,
@@ -125,27 +141,41 @@ func GetMyDiscountRequests(userID int64) ([]map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Print(rows)
 	defer rows.Close()
 
 	var result []map[string]interface{}
 
 	for rows.Next() {
 		var (
-			id        int64
-			percent   float64
-			status    string
-			comment   *string
-			createdAt string
+			id      int64
+			percent float64
+			status  string
+			reason  string
+
+			comment *string
+
+			createdAt time.Time
 		)
 
-		rows.Scan(&id, &percent, &status, &comment, &createdAt)
+		if err := rows.Scan(
+			&id,
+			&percent,
+			&status,
+			&reason,
+			&comment,
+			&createdAt,
+		); err != nil {
+			return nil, err
+		}
 
 		result = append(result, map[string]interface{}{
 			"id":                  id,
 			"discount_percentage": percent,
 			"status":              status,
+			"reason":              reason,
 			"approval_comment":    comment,
-			"created_at":          createdAt,
+			"created_at":          createdAt.Format(time.RFC3339),
 		})
 	}
 

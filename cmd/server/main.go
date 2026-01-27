@@ -36,6 +36,8 @@ func main() {
 	loc, _ := time.LoadLocation("Asia/Kolkata")
 	c := cron.New(cron.WithLocation(loc))
 	c.AddFunc("0 0 * * *", jobs.RunAutoRejectJob)
+	// c.AddFunc("every @1m", jobs.RunAutoRejectJob)
+
 	c.Start()
 
 	log.Println("🚀 Server started on port", cfg.AppPort)

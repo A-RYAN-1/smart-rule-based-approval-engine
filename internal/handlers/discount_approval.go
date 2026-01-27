@@ -34,50 +34,67 @@ func GetPendingDiscounts(c *gin.Context) {
 }
 
 func ApproveDiscount(c *gin.Context) {
-	handleDiscountDecision(c, "APPROVED")
-}
-
-func RejectDiscount(c *gin.Context) {
-	handleDiscountDecision(c, "REJECTED")
-}
-
-type ApprovalRequest struct {
-	Comment string `json:"comment"`
-}
-
-func handleDiscountDecision(c *gin.Context, action string) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
 	requestID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		response.Error(
-			c,
-			http.StatusBadRequest,
-			"invalid discount request id",
-			nil,
-		)
+		response.Error(c, http.StatusBadRequest, "invalid discount request id", nil)
 		return
 	}
 
-	var req ApprovalRequest
-	_ = c.ShouldBindJSON(&req) // comment is optional
-
-	var svcErr error
-	if action == "APPROVED" {
-		svcErr = services.ApproveDiscount(role, approverID, requestID, req.Comment)
-	} else {
-		svcErr = services.RejectDiscount(role, approverID, requestID, req.Comment)
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil && err.Error() != "EOF" {
+		response.Error(c, http.StatusBadRequest, "invalid request body", err.Error())
+		return
 	}
 
-	if svcErr != nil {
-		handleApproveRejectDiscountError(c, svcErr)
+	comment, _ := body["comment"].(string)
+
+	err = services.ApproveDiscount(role, approverID, requestID, comment)
+	if err != nil {
+		handleApproveRejectDiscountError(c, err)
 		return
 	}
 
 	response.Success(
 		c,
-		"discount request "+action+" successfully",
+		"discount request approved successfully",
+		nil,
+	)
+}
+
+func RejectDiscount(c *gin.Context) {
+	role := c.GetString("role")
+	approverID := c.GetInt64("user_id")
+
+	requestID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid discount request id", nil)
+		return
+	}
+
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(c, http.StatusBadRequest, "invalid request body", err.Error())
+		return
+	}
+
+	comment, ok := body["comment"].(string)
+	if !ok || comment == "" {
+		response.Error(c, http.StatusBadRequest, "comment is required", nil)
+		return
+	}
+
+	err = services.RejectDiscount(role, approverID, requestID, comment)
+	if err != nil {
+		handleApproveRejectDiscountError(c, err)
+		return
+	}
+
+	response.Success(
+		c,
+		"discount request rejected successfully",
 		nil,
 	)
 }

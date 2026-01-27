@@ -46,7 +46,26 @@ func ApproveLeave(c *gin.Context) {
 		return
 	}
 
-	err = services.ApproveLeave(role, approverID, requestID)
+	// Read request body as map
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"invalid request body",
+			err.Error(),
+		)
+		return
+	}
+
+	approvalComment, _ := body["comment"].(string)
+
+	err = services.ApproveLeave(
+		role,
+		approverID,
+		requestID,
+		approvalComment,
+	)
 	if err != nil {
 		response.Error(
 			c,
@@ -79,7 +98,35 @@ func RejectLeave(c *gin.Context) {
 		return
 	}
 
-	err = services.RejectLeave(role, approverID, requestID)
+	// Read request body as map
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"invalid request body",
+			err.Error(),
+		)
+		return
+	}
+
+	rejectionComment, ok := body["comment"].(string)
+	if !ok || rejectionComment == "" {
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			"rejection comment is required",
+			nil,
+		)
+		return
+	}
+
+	err = services.RejectLeave(
+		role,
+		approverID,
+		requestID,
+		rejectionComment,
+	)
 	if err != nil {
 		response.Error(
 			c,

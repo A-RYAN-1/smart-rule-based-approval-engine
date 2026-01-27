@@ -65,27 +65,34 @@ func GetPendingExpenseRequests(role string, approverID int64) ([]map[string]inte
 
 	return result, nil
 }
-
-func ApproveExpense(role string, approverID, requestID int64) error {
+func ApproveExpense(role string, approverID, requestID int64, comment string) error {
 	ctx := context.Background()
 
 	_, err := database.DB.Exec(
 		ctx,
-		`UPDATE expense_requests SET status='APPROVED'
-		 WHERE id=$1 AND status='PENDING'`,
-		requestID,
+		`UPDATE expense_requests
+		 SET status='APPROVED',
+		     approved_by_id=$1,
+		     approval_comment=$2
+		 WHERE id=$3 AND status='PENDING'`,
+		approverID, comment, requestID,
 	)
+
 	return err
 }
 
-func RejectExpense(role string, approverID, requestID int64) error {
+func RejectExpense(role string, approverID, requestID int64, comment string) error {
 	ctx := context.Background()
 
 	_, err := database.DB.Exec(
 		ctx,
-		`UPDATE expense_requests SET status='REJECTED'
-		 WHERE id=$1 AND status='PENDING'`,
-		requestID,
+		`UPDATE expense_requests
+		 SET status='REJECTED',
+		     approved_by_id=$1,
+		     approval_comment=$2
+		 WHERE id=$3 AND status='PENDING'`,
+		approverID, comment, requestID,
 	)
+
 	return err
 }

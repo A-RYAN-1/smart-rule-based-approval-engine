@@ -73,8 +73,13 @@ func GetPendingLeaveRequests(role string, approverID int64) ([]map[string]interf
 	return result, nil
 }
 
-func ApproveLeave(role string, approverID, requestID int64) error {
+func ApproveLeave(
+	role string,
+	approverID, requestID int64,
+	approvalComment string,
+) error {
 	ctx := context.Background()
+
 	tx, err := database.DB.Begin(ctx)
 	if err != nil {
 		return err
@@ -92,7 +97,6 @@ func ApproveLeave(role string, approverID, requestID int64) error {
 		 WHERE id=$1`,
 		requestID,
 	).Scan(&employeeID, &status, &from, &to)
-
 	if err != nil {
 		return err
 	}
@@ -108,7 +112,6 @@ func ApproveLeave(role string, approverID, requestID int64) error {
 		`SELECT role FROM users WHERE id=$1`,
 		employeeID,
 	).Scan(&requesterRole)
-
 	if role == "MANAGER" && requesterRole != "EMPLOYEE" {
 		return errors.New("manager can approve only employees")
 	}
@@ -127,13 +130,20 @@ func ApproveLeave(role string, approverID, requestID int64) error {
 		return err
 	}
 
+	// Default comment if not provided
+	if approvalComment == "" {
+		approvalComment = "Approved"
+	}
+
 	// Update request
 	_, err = tx.Exec(
 		ctx,
 		`UPDATE leave_requests
-		 SET status='APPROVED', approved_by_id=$1
-		 WHERE id=$2`,
-		approverID, requestID,
+		 SET status='APPROVED',
+		     approved_by_id=$1,
+		     approval_comment=$2
+		 WHERE id=$3`,
+		approverID, approvalComment, requestID,
 	)
 	if err != nil {
 		return err
@@ -142,8 +152,13 @@ func ApproveLeave(role string, approverID, requestID int64) error {
 	return tx.Commit(ctx)
 }
 
-func RejectLeave(role string, approverID, requestID int64) error {
+func RejectLeave(
+	role string,
+	approverID, requestID int64,
+	rejectionComment string,
+) error {
 	ctx := context.Background()
+
 	tx, err := database.DB.Begin(ctx)
 	if err != nil {
 		return err
@@ -160,7 +175,6 @@ func RejectLeave(role string, approverID, requestID int64) error {
 		 WHERE id=$1`,
 		requestID,
 	).Scan(&employeeID, &status)
-
 	if err != nil {
 		return err
 	}
@@ -169,30 +183,35 @@ func RejectLeave(role string, approverID, requestID int64) error {
 		return errors.New("request not pending")
 	}
 
-	// check requester role
+	// Authorization
 	var requesterRole string
 	err = tx.QueryRow(
 		ctx,
 		`SELECT role FROM users WHERE id=$1`,
 		employeeID,
 	).Scan(&requesterRole)
+	if err != nil {
+		return err
+	}
 
 	if role == "MANAGER" && requesterRole != "EMPLOYEE" {
 		return errors.New("manager can reject only employees")
 	}
 
+	// Update request
 	_, err = tx.Exec(
 		ctx,
 		`UPDATE leave_requests
 		 SET status='REJECTED',
-		     approved_by_id=$1
-		 WHERE id=$2`,
-		approverID, requestID,
+		     approved_by_id=$1,
+		     approval_comment=$2
+		 WHERE id=$3`,
+		approverID, rejectionComment, requestID,
 	)
-
 	if err != nil {
 		return err
 	}
 
 	return tx.Commit(ctx)
 }
+	

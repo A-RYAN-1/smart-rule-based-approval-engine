@@ -1,7 +1,10 @@
 package services
 
+import "fmt"
+
 func EvaluateLeaveRule(rule map[string]interface{}, days int) bool {
 	maxDays, ok := rule["max_days"].(float64)
+	fmt.Println("EvaluateLeaveRule ", ok)
 	if !ok {
 		return false
 	}

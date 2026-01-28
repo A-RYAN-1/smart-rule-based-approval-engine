@@ -53,18 +53,9 @@ func ApplyDiscount(
 	}
 
 	// ---- Fetch user grade ----
-	var gradeID int64
-	err = tx.QueryRow(
-		ctx,
-		`SELECT grade_id FROM users WHERE id=$1`,
-		userID,
-	).Scan(&gradeID)
-
-	if err == pgx.ErrNoRows {
-		return "", apperrors.ErrUserNotFound
-	}
+	gradeID, err := FetchUserGrade(ctx, tx, userID)
 	if err != nil {
-		return "", errors.New("failed to fetch user grade")
+		return "", err
 	}
 
 	// ---- Fetch rule ----
@@ -74,15 +65,9 @@ func ApplyDiscount(
 	}
 
 	// ---- Decision ----
-	decision := Decide("DISCOUNT", rule.Condition, percent)
-
-	status := "PENDING"
-	message := "Discount submitted to manager for approval"
-
-	if decision == "AUTO_APPROVE" {
-		status = "AUTO_APPROVED"
-		message = "Discount approved by system"
-	}
+	result := MakeDecision("DISCOUNT", rule.Condition, percent)
+	status := result.Status
+	message := result.Message
 
 	// ---- Insert discount request ----
 	_, err = tx.Exec(
@@ -143,9 +128,9 @@ func CancelDiscount(userID, requestID int64) error {
 		return errors.New("failed to fetch discount request")
 	}
 
-	// Cannot cancel finalized request
-	if status == "APPROVED" || status == "REJECTED" || status == "CANCELLED" {
-		return apperrors.ErrDiscountCannotCancel
+	// reuse CanCancel from apply_cancel_rules.go
+	if err := CanCancel(status); err != nil {
+		return err
 	}
 
 	_, err = tx.Exec(
@@ -159,7 +144,7 @@ func CancelDiscount(userID, requestID int64) error {
 		return errors.New("failed to cancel discount request")
 	}
 
-	// 🔄 Restore discount if auto-approved
+	//  Restore discount if auto-approved
 	if status == "AUTO_APPROVED" {
 		_, err = tx.Exec(
 			ctx,

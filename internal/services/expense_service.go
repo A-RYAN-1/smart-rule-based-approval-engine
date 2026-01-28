@@ -59,18 +59,9 @@ func ApplyExpense(
 	}
 
 	// ---- Fetch user grade ----
-	var gradeID int64
-	err = tx.QueryRow(
-		ctx,
-		`SELECT grade_id FROM users WHERE id=$1`,
-		userID,
-	).Scan(&gradeID)
-
-	if err == pgx.ErrNoRows {
-		return "", apperrors.ErrUserNotFound
-	}
+	gradeID, err := FetchUserGrade(ctx, tx, userID)
 	if err != nil {
-		return "", errors.New("failed to fetch user grade")
+		return "", err
 	}
 
 	// ---- Fetch rule ----
@@ -80,15 +71,9 @@ func ApplyExpense(
 	}
 
 	// ---- Decision ----
-	decision := Decide("EXPENSE", rule.Condition, amount)
-
-	status := "PENDING"
-	message := "Expense submitted to manager for approval"
-
-	if decision == "AUTO_APPROVE" {
-		status = "AUTO_APPROVED"
-		message = "Expense approved by system"
-	}
+	result := MakeDecision("EXPENSE", rule.Condition, amount)
+	status := result.Status
+	message := result.Message
 
 	// ---- Insert expense request ----
 	_, err = tx.Exec(
@@ -145,9 +130,9 @@ func CancelExpense(userID, requestID int64) error {
 	if err != nil {
 		return err
 	}
-
-	if status == "APPROVED" || status == "REJECTED" {
-		return errors.New("cannot cancel finalized request")
+	// reuse CanCancel from apply_cancel_rules.go
+	if err := CanCancel(status); err != nil {
+		return err
 	}
 
 	_, err = tx.Exec(

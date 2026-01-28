@@ -214,4 +214,3 @@ func RejectLeave(
 
 	return tx.Commit(ctx)
 }
-	

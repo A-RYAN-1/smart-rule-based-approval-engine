@@ -70,18 +70,9 @@ func ApplyLeave(
 	}
 
 	// ---- Fetch user grade ----
-	var gradeID int64
-	err = tx.QueryRow(
-		ctx,
-		`SELECT grade_id FROM users WHERE id=$1`,
-		userID,
-	).Scan(&gradeID)
-
-	if err == pgx.ErrNoRows {
-		return "", "", apperrors.ErrUserNotFound
-	}
+	gradeID, err := FetchUserGrade(ctx, tx, userID)
 	if err != nil {
-		return "", "", errors.New("failed to fetch user grade")
+		return "", "",	 err
 	}
 
 	// ---- Fetch rule ----
@@ -91,17 +82,9 @@ func ApplyLeave(
 	}
 
 	// ---- Decision ----
-	decision := Decide("LEAVE", rule.Condition, float64(days))
-
-	status := ""
-	message := ""
-	if decision == "AUTO_APPROVE" {
-		status = "AUTO_APPROVED"
-		message = "Leave approved by system"
-	} else {
-		status = "PENDING"
-		message = "Leave request is pending approval"
-	}
+	result := MakeDecision("LEAVE", rule.Condition, float64(days))
+	status := result.Status
+	message := result.Message
 
 	_, err = tx.Exec(
 		ctx,
@@ -195,8 +178,9 @@ func CancelLeave(userID, requestID int64) error {
 		return err
 	}
 
-	if status == "APPROVED" || status == "REJECTED" {
-		return errors.New("cannot cancel finalized request")
+	// reuse CanCancel from apply_cancel_rules.go
+	if err := CanCancel(status); err != nil {
+		return err
 	}
 
 	days := utils.CalculateLeaveDays(from, to)

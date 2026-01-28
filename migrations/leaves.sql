@@ -17,6 +17,6 @@ CREATE TABLE leave_requests (
     status leave_status NOT NULL,
     approved_by_id BIGINT REFERENCES users(id),
     rule_id BIGINT,
-    approval_comment TEXT,
+    approval_comment TEXT DEFAULT 'Not Updated by manager',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

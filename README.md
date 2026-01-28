@@ -257,54 +257,6 @@ Role: admin | manager | employee
 
 ---
 
-## 🚀 Performance
-
-- ✅ Code splitting (Vite)
-- ✅ React Query caching
-- ✅ Lazy loading
-- ✅ Tailwind CSS optimization
-- ✅ 98% test coverage
-- Build size: ~350 KB (gzipped)
-- Build time: 4-5 seconds
-
----
-
-## 📊 Key Metrics
-
-| Metric | Value |
-|--------|-------|
-| Test Coverage | 98% |
-| Test Cases | 105+ |
-| Components | 40+ |
-| Pages | 10+ |
-| TypeScript Coverage | 100% |
-| Build Time | ~4s |
-| Bundle Size | ~350 KB |
-
----
-
-## 🔄 Workflow Example
-
-```
-User submits Leave Request
-        ↓
-System evaluates rules
-        ↓
-Checks if condition matches:
-  • max_days <= limit?
-  • Grade matches rule?
-  • Rule active?
-        ↓
-Auto-decision made:
-  • Auto Approve ✅
-  • Auto Reject ❌
-  • Assign to approver 👤
-        ↓
-Status updated in real-time
-User notified
-```
-
----
 
 ## 🤝 Contributing
 
@@ -337,34 +289,3 @@ test(scope): description
 ```
 
 ---
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
----
-
-## 📞 Support
-
-- 📧 Email: support@approvalgenie.dev
-- 💬 Issues: [GitHub Issues](https://github.com/your-org/approval-genie/issues)
-- 📚 Docs: Check `/docs` folder
-- 🐦 Twitter: [@ApprovalGenie](https://twitter.com/approvalgenie)
-
----
-
-## 🎉 Acknowledgments
-
-Built with:
-- ❤️ React 18 & TypeScript
-- 🎨 Tailwind CSS & Shadcn/ui
-- ⚡ Vite & TanStack Query
-- ✅ Vitest
-
----
-
-**Last Updated:** January 28, 2026  
-**Version:** 1.0.0  
-**Status:** ✅ Production Ready
-
-Made with ❤️ for Enterprise Automation

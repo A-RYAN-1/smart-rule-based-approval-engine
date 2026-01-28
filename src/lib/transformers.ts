@@ -1,6 +1,6 @@
 import { LeaveRequest, ExpenseRequest, DiscountRequest, Holiday, RequestStatus } from '@/types';
 
-const normalizeStatus = (status: string | undefined | null): RequestStatus => {
+export const normalizeStatus = (status: string | undefined | null): RequestStatus => {
     if (!status) return 'pending'; // Default if missing
     const s = status.toUpperCase();
     if (s === 'AUTO_APPROVED') return 'auto_approved';

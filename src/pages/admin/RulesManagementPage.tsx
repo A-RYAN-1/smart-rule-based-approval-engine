@@ -25,8 +25,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { Shield, Plus, Trash2, Zap, CheckCircle2, XCircle, Users } from 'lucide-react';
+import { toast } from 'sonner';
+import { Shield, Plus, Trash2, Zap, CheckCircle2, XCircle, Users, Edit } from 'lucide-react';
 import { RequestType, ApprovalRule } from '@/types';
 import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -36,14 +36,17 @@ export default function RulesManagementPage() {
   const {
     rules,
     addRule,
+    updateRule,
     toggleRule,
     deleteRule,
     isLoadingRules,
     runAutoReject,
     isRunningAutoReject
   } = useAdmin();
-  const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddMode, setIsAddMode] = useState(true);
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [newRule, setNewRule] = useState({
     requestType: 'leave' as RequestType,
     condition: {} as any,
@@ -66,6 +69,57 @@ export default function RulesManagementPage() {
       </AppLayout>
     );
   }
+
+  const resetForm = () => {
+    setIsAddMode(true);
+    setEditingRuleId(null);
+    setNewRule({
+      requestType: 'leave',
+      condition: {},
+      action: 'AUTO_APPROVE',
+      priority: 1,
+      gradeId: 1,
+    });
+  };
+
+  const handleEditRule = (rule: ApprovalRule) => {
+    setIsAddMode(false);
+    setEditingRuleId(rule.id);
+    setNewRule({
+      requestType: rule.requestType,
+      condition: rule.condition,
+      action: rule.action,
+      gradeId: rule.gradeId,
+      priority: rule.priority,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveRule = async () => {
+    try {
+      if (typeof newRule.condition !== 'object' || newRule.condition === null) {
+        toast.error('Condition must be valid JSON');
+        return;
+      }
+
+      if (isAddMode) {
+        await addRule({
+          ...newRule,
+          isActive: true,
+        });
+      } else {
+        await updateRule({
+          id: editingRuleId!,
+          rule: newRule,
+        });
+      }
+      setIsAddDialogOpen(false);
+      setIsEditDialogOpen(false);
+      resetForm();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleAddRule = async () => {
     try {
@@ -140,7 +194,12 @@ export default function RulesManagementPage() {
             <p className="text-muted-foreground mt-1">Configure automatic approval rules</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button onClick={() => {
+              setIsAddMode(true);
+              setEditingRuleId(null);
+              resetForm();
+              setIsAddDialogOpen(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Rule
             </Button>
@@ -241,7 +300,14 @@ export default function RulesManagementPage() {
                           onCheckedChange={() => toggleRule(rule)}
                         />
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditRule(rule)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -265,13 +331,19 @@ export default function RulesManagementPage() {
           </Card>
         ))}
 
-        {/* Add Rule Dialog */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        {/* Add/Edit Rule Dialog */}
+        <Dialog open={isAddDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsAddDialogOpen(false);
+            setIsEditDialogOpen(false);
+            resetForm();
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Rule</DialogTitle>
+              <DialogTitle>{isAddMode ? 'Add New Rule' : 'Edit Rule'}</DialogTitle>
               <DialogDescription>
-                Create a new automatic approval rule
+                {isAddMode ? 'Create a new automatic approval rule' : 'Update the approval rule'}
               </DialogDescription>
             </DialogHeader>
 
@@ -352,7 +424,6 @@ export default function RulesManagementPage() {
                   <SelectContent className="bg-popover">
                     <SelectItem value="1">Grade 1 (Employee)</SelectItem>
                     <SelectItem value="2">Grade 2 (Manager)</SelectItem>
-                    <SelectItem value="3">Grade 3 (Admin)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -377,11 +448,15 @@ export default function RulesManagementPage() {
             </div>
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              <Button variant="outline" onClick={() => {
+                setIsAddDialogOpen(false);
+                setIsEditDialogOpen(false);
+                resetForm();
+              }}>
                 Cancel
               </Button>
-              <Button onClick={handleAddRule}>
-                Add Rule
+              <Button onClick={handleSaveRule}>
+                {isAddMode ? 'Add Rule' : 'Save Changes'}
               </Button>
             </DialogFooter>
           </DialogContent>

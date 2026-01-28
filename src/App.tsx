@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Pages
 import AuthPage from "./pages/AuthPage";
@@ -31,16 +32,16 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/leaves" element={<LeaveRequestPage />} />
-            <Route path="/expenses" element={<ExpenseRequestPage />} />
-            <Route path="/discounts" element={<DiscountRequestPage />} />
-            <Route path="/my-requests" element={<MyRequestsPage />} />
-            <Route path="/pending-approvals" element={<PendingApprovalsPage />} />
-            <Route path="/admin/rules" element={<RulesManagementPage />} />
-            <Route path="/admin/reports" element={<ReportsPage />} />
-            <Route path="/admin/holidays" element={<HolidaysPage />} />
-            <Route path="/admin/users" element={<UsersPage />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/leaves" element={<ProtectedRoute><LeaveRequestPage /></ProtectedRoute>} />
+            <Route path="/expenses" element={<ProtectedRoute><ExpenseRequestPage /></ProtectedRoute>} />
+            <Route path="/discounts" element={<ProtectedRoute><DiscountRequestPage /></ProtectedRoute>} />
+            <Route path="/my-requests" element={<ProtectedRoute><MyRequestsPage /></ProtectedRoute>} />
+            <Route path="/pending-approvals" element={<ProtectedRoute><PendingApprovalsPage /></ProtectedRoute>} />
+            <Route path="/admin/rules" element={<ProtectedRoute><RulesManagementPage /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+            <Route path="/admin/holidays" element={<ProtectedRoute><HolidaysPage /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><UsersPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

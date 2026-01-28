@@ -369,68 +369,8 @@ export default function Dashboard() {
                 </Card>
               </div>
             )}
-
             {isManager && (
               <div className="space-y-6">
-                <Card className="rounded-3xl border-primary/10 bg-gradient-to-br from-primary/5 to-transparent shadow-sm">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg font-bold">Approvals Queue</CardTitle>
-                        <CardDescription>Items waiting for your review</CardDescription>
-                      </div>
-                      <div className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                        Operational
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="p-4 rounded-2xl bg-card border border-border/50 text-center">
-                        <CalendarDays className="h-5 w-5 mx-auto mb-2 text-primary/60" />
-                        <p className="text-2xl font-black">{pendingLeaves.length}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Leaves</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-card border border-border/50 text-center">
-                        <Receipt className="h-5 w-5 mx-auto mb-2 text-primary/60" />
-                        <p className="text-2xl font-black">{pendingExpenses.length}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Expenses</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-card border border-border/50 text-center">
-                        <Percent className="h-5 w-5 mx-auto mb-2 text-primary/60" />
-                        <p className="text-2xl font-black">{pendingDiscounts.length}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold">Discounts</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-3xl border-border/40 shadow-sm overflow-hidden">
-                  <CardHeader className="pb-3 px-6 pt-6">
-                    <CardTitle className="text-lg font-bold">Your Request Status</CardTitle>
-                    <CardDescription>Track your personal requests</CardDescription>
-                  </CardHeader>
-                  <CardContent className="px-6 pb-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-center">
-                        <p className="text-sm text-blue-600 font-semibold mb-1">Manual Approved</p>
-                        <p className="text-2xl font-black text-blue-900">{stats.manualApproved}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
-                        <p className="text-sm text-emerald-600 font-semibold mb-1">Auto Approved</p>
-                        <p className="text-2xl font-black text-emerald-900">{stats.autoApproved}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-center">
-                        <p className="text-sm text-red-600 font-semibold mb-1">Manual Rejected</p>
-                        <p className="text-2xl font-black text-red-900">{stats.manualRejected}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 text-center">
-                        <p className="text-sm text-orange-600 font-semibold mb-1">Auto Rejected</p>
-                        <p className="text-2xl font-black text-orange-900">{stats.autoRejected}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
           </div>
@@ -443,7 +383,7 @@ export default function Dashboard() {
                   <div>
                     <CardTitle className="text-lg font-bold">Insights</CardTitle>
                     <CardDescription>
-                      {isApprover ? (statusDistribution ? 'System-wide activity distribution' : 'Pending team requests') : 'Request Distribution'}
+                      {isApprover ? (statusDistribution ? 'System-wide activity distribution' : 'My Requests Status') : 'Request Distribution'}
                     </CardDescription>
                   </div>
                   {statusDistribution && (

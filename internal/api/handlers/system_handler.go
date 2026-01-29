@@ -8,10 +8,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RunAutoReject(c *gin.Context) {
-	err1 := services.AutoRejectLeaveRequests()
-	err2 := services.AutoRejectExpenseRequests()
-	err3 := services.AutoRejectDiscountRequests()
+type SystemHandler struct {
+	autoRejectService *services.AutoRejectService
+}
+
+func NewSystemHandler(autoRejectService *services.AutoRejectService) *SystemHandler {
+	return &SystemHandler{autoRejectService: autoRejectService}
+}
+
+func (h *SystemHandler) RunAutoReject(c *gin.Context) {
+	ctx := c.Request.Context()
+	err1 := h.autoRejectService.AutoRejectLeaveRequests(ctx)
+	err2 := h.autoRejectService.AutoRejectExpenseRequests(ctx)
+	err3 := h.autoRejectService.AutoRejectDiscountRequests(ctx)
 
 	if err1 != nil || err2 != nil || err3 != nil {
 		response.Error(

@@ -17,7 +17,15 @@ type HolidayRequest struct {
 	Description string `json:"description"`
 }
 
-func AddHoliday(c *gin.Context) {
+type HolidayHandler struct {
+	holidayService *services.HolidayService
+}
+
+func NewHolidayHandler(holidayService *services.HolidayService) *HolidayHandler {
+	return &HolidayHandler{holidayService: holidayService}
+}
+
+func (h *HolidayHandler) AddHoliday(c *gin.Context) {
 	role := c.GetString("role")
 	adminID := c.GetInt64("user_id")
 
@@ -43,7 +51,8 @@ func AddHoliday(c *gin.Context) {
 		return
 	}
 
-	err = services.AddHoliday(role, adminID, date, req.Description)
+	ctx := c.Request.Context()
+	err = h.holidayService.AddHoliday(ctx, role, adminID, date, req.Description)
 	if err != nil {
 		handleHolidayError(c, err, "unable to add holiday")
 		return
@@ -56,10 +65,11 @@ func AddHoliday(c *gin.Context) {
 	)
 }
 
-func GetHolidays(c *gin.Context) {
+func (h *HolidayHandler) GetHolidays(c *gin.Context) {
 	role := c.GetString("role")
+	ctx := c.Request.Context()
 
-	holidays, err := services.GetHolidays(role)
+	holidays, err := h.holidayService.GetHolidays(ctx, role)
 	if err != nil {
 		handleHolidayError(c, err, "failed to fetch holidays")
 		return
@@ -72,7 +82,7 @@ func GetHolidays(c *gin.Context) {
 	)
 }
 
-func DeleteHoliday(c *gin.Context) {
+func (h *HolidayHandler) DeleteHoliday(c *gin.Context) {
 	role := c.GetString("role")
 
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -86,7 +96,8 @@ func DeleteHoliday(c *gin.Context) {
 		return
 	}
 
-	err = services.DeleteHoliday(role, id)
+	ctx := c.Request.Context()
+	err = h.holidayService.DeleteHoliday(ctx, role, id)
 	if err != nil {
 		handleHolidayError(c, err, "unable to delete holiday")
 		return

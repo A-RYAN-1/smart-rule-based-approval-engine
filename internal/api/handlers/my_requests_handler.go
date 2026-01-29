@@ -10,14 +10,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetMyLeaves(c *gin.Context) {
+type MyRequestsHandler struct {
+	myRequestsService *services.MyRequestsService
+}
+
+func NewMyRequestsHandler(myRequestsService *services.MyRequestsService) *MyRequestsHandler {
+	return &MyRequestsHandler{myRequestsService: myRequestsService}
+}
+
+func (h *MyRequestsHandler) GetMyLeaves(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(c, http.StatusUnauthorized, "unauthorized user", nil)
 		return
 	}
 
-	data, err := services.GetMyLeaveRequests(userID)
+	ctx := c.Request.Context()
+	data, err := h.myRequestsService.GetMyLeaveRequests(ctx, userID)
 	if err != nil {
 		handleRequestError(c, err, "failed to fetch leave requests")
 		return
@@ -29,14 +38,16 @@ func GetMyLeaves(c *gin.Context) {
 		data,
 	)
 }
-func GetMyExpenses(c *gin.Context) {
+
+func (h *MyRequestsHandler) GetMyExpenses(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(c, http.StatusUnauthorized, "unauthorized user", nil)
 		return
 	}
 
-	data, err := services.GetMyExpenseRequests(userID)
+	ctx := c.Request.Context()
+	data, err := h.myRequestsService.GetMyExpenseRequests(ctx, userID)
 	if err != nil {
 		handleRequestError(c, err, "failed to fetch expense requests")
 		return
@@ -48,14 +59,16 @@ func GetMyExpenses(c *gin.Context) {
 		data,
 	)
 }
-func GetMyDiscounts(c *gin.Context) {
+
+func (h *MyRequestsHandler) GetMyDiscounts(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(c, http.StatusUnauthorized, "unauthorized user", nil)
 		return
 	}
 
-	data, err := services.GetMyDiscountRequests(userID)
+	ctx := c.Request.Context()
+	data, err := h.myRequestsService.GetMyDiscountRequests(ctx, userID)
 	if err != nil {
 		handleRequestError(c, err, "failed to fetch discount requests")
 		return

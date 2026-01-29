@@ -3,11 +3,14 @@ package services
 import (
 	"context"
 	"log"
-	"rule-based-approval-engine/internal/database"
+	"strings"
+
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/models"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 	"rule-based-approval-engine/internal/pkg/utils"
-	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
@@ -18,10 +21,26 @@ var (
 	ManagerID = int64(2)
 )
 
-func RegisterUser(name, email, password string) error {
-	ctx := context.Background()
+// AuthService handles authentication and user registration business logic
+type AuthService struct {
+	userRepo    repositories.UserRepository
+	balanceRepo repositories.BalanceRepository
+	db          *pgxpool.Pool
+}
 
+// NewAuthService creates a new instance of AuthService
+func NewAuthService(userRepo repositories.UserRepository, balanceRepo repositories.BalanceRepository, db *pgxpool.Pool) *AuthService {
+	return &AuthService{
+		userRepo:    userRepo,
+		balanceRepo: balanceRepo,
+		db:          db,
+	}
+}
+
+// RegisterUser registers a new user
+func (s *AuthService) RegisterUser(ctx context.Context, name, email, password string) error {
 	log.Println("RegisterUser started:", email)
+
 	if strings.TrimSpace(email) == "" {
 		log.Println("Validation failed: email empty")
 		return apperrors.ErrEmailRequired
@@ -31,7 +50,7 @@ func RegisterUser(name, email, password string) error {
 		return apperrors.ErrPasswordRequired
 	}
 
-	tx, err := database.DB.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		log.Println("DB Begin failed:", err)
 		return err
@@ -39,18 +58,12 @@ func RegisterUser(name, email, password string) error {
 	defer tx.Rollback(ctx)
 
 	// Check email uniqueness
-	var count int
-	err = tx.QueryRow(
-		ctx,
-		"SELECT COUNT(*) FROM users WHERE email=$1",
-		email,
-	).Scan(&count)
-
+	exists, err := s.userRepo.CheckEmailExists(ctx, tx, email)
 	if err != nil {
 		log.Println("Email uniqueness query failed:", err)
 		return err
 	}
-	if count > 0 {
+	if exists {
 		log.Println("Email already registered:", email)
 		return apperrors.ErrEmailAlreadyRegistered
 	}
@@ -87,15 +100,16 @@ func RegisterUser(name, email, password string) error {
 	log.Printf("Role decided: role=%s grade=%d managerID=%v\n", role, gradeID, managerID)
 
 	// Insert user
-	var userID int64
-	err = tx.QueryRow(
-		ctx,
-		`INSERT INTO users (name, email, password_hash, grade_id, role, manager_id)
-		 VALUES ($1,$2,$3,$4,$5,$6)
-		 RETURNING id`,
-		name, email, hashedPassword, gradeID, role, managerID,
-	).Scan(&userID)
+	user := &models.User{
+		Name:         name,
+		Email:        email,
+		PasswordHash: hashedPassword,
+		GradeID:      gradeID,
+		Role:         role,
+		ManagerID:    managerID,
+	}
 
+	userID, err := s.userRepo.Create(ctx, tx, user)
 	if err != nil {
 		log.Println("User insert failed:", err)
 		return err
@@ -107,7 +121,7 @@ func RegisterUser(name, email, password string) error {
 	if role != "ADMIN" {
 		log.Println("Initializing balances for user:", userID)
 
-		err = InitializeBalances(tx, userID, gradeID)
+		err = s.balanceRepo.InitializeBalances(ctx, tx, userID, gradeID)
 		if err != nil {
 			log.Println("InitializeBalances failed:", err)
 			return err
@@ -123,15 +137,9 @@ func RegisterUser(name, email, password string) error {
 	return nil
 }
 
-func LoginUser(email, password string) (string, string, error) {
-	var user models.User
-
-	err := database.DB.QueryRow(
-		context.Background(),
-		`SELECT id, password_hash, role FROM users WHERE email=$1`,
-		email,
-	).Scan(&user.ID, &user.PasswordHash, &user.Role)
-
+// LoginUser authenticates a user and returns a JWT token
+func (s *AuthService) LoginUser(ctx context.Context, email, password string) (string, string, error) {
+	user, err := s.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return "", "", apperrors.ErrInvalidCredentials
 	}

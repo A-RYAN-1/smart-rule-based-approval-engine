@@ -1,84 +1,42 @@
 package handlers
 
 import (
-	"context"
 	"log"
 	"net/http"
 
-	"rule-based-approval-engine/internal/database"
+	"rule-based-approval-engine/internal/app/services"
 	"rule-based-approval-engine/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
-func GetMyBalances(c *gin.Context) {
+type BalanceHandler struct {
+	balanceService *services.BalanceService
+}
+
+func NewBalanceHandler(balanceService *services.BalanceService) *BalanceHandler {
+	return &BalanceHandler{balanceService: balanceService}
+}
+
+func (h *BalanceHandler) GetMyBalances(c *gin.Context) {
 	userID := c.GetInt64("user_id")
+	ctx := c.Request.Context()
 
-	var leaveTotal, leaveRemaining int
-	var expenseTotal, expenseRemaining float64
-	var discountTotal, discountRemaining float64
-
-	err := database.DB.QueryRow(
-		context.Background(),
-		`SELECT total_allocated, remaining_count FROM leaves WHERE user_id=$1`,
-		userID,
-	).Scan(&leaveTotal, &leaveRemaining)
+	balances, err := h.balanceService.GetMyBalances(ctx, userID)
 	if err != nil {
 		response.Error(
 			c,
 			http.StatusInternalServerError,
-			"failed to fetch leave balance",
+			"failed to fetch balances",
 			err.Error(),
 		)
-		log.Printf("Error fetching leave balance: %v", err)
-		return
-	}
-	err = database.DB.QueryRow(
-		context.Background(),
-		`SELECT total_amount, remaining_amount FROM expense WHERE user_id=$1`,
-		userID,
-	).Scan(&expenseTotal, &expenseRemaining)
-	if err != nil {
-		response.Error(
-			c,
-			http.StatusInternalServerError,
-			"failed to fetch expense balance",
-			err.Error(),
-		)
-		return
-	}
-
-	err = database.DB.QueryRow(
-		context.Background(),
-		`SELECT total_discount, remaining_discount FROM discount WHERE user_id=$1`,
-		userID,
-	).Scan(&discountTotal, &discountRemaining)
-	if err != nil {
-		response.Error(
-			c,
-			http.StatusInternalServerError,
-			"failed to fetch discount balance",
-			err.Error(),
-		)
+		log.Printf("Error fetching balances: %v", err)
 		return
 	}
 
 	response.Success(
 		c,
 		"balances fetched successfully",
-		gin.H{
-			"leave": gin.H{
-				"total":     leaveTotal,
-				"remaining": leaveRemaining,
-			},
-			"expense": gin.H{
-				"total":     expenseTotal,
-				"remaining": expenseRemaining,
-			},
-			"discount": gin.H{
-				"total":     discountTotal,
-				"remaining": discountRemaining,
-			},
-		},
+		balances,
 	)
 }

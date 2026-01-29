@@ -2,15 +2,36 @@ package services
 
 import (
 	"context"
-	"rule-based-approval-engine/internal/database"
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/pkg/utils"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func AutoRejectLeaveRequests() error {
-	ctx := context.Background()
+type AutoRejectService struct {
+	leaveRepo   repositories.LeaveRequestRepository
+	expenseRepo repositories.ExpenseRequestRepository
+	holidayRepo repositories.HolidayRepository
+	db          *pgxpool.Pool
+}
 
-	rows, err := database.DB.Query(
+func NewAutoRejectService(
+	leaveRepo repositories.LeaveRequestRepository,
+	expenseRepo repositories.ExpenseRequestRepository,
+	holidayRepo repositories.HolidayRepository,
+	db *pgxpool.Pool,
+) *AutoRejectService {
+	return &AutoRejectService{
+		leaveRepo:   leaveRepo,
+		expenseRepo: expenseRepo,
+		holidayRepo: holidayRepo,
+		db:          db,
+	}
+}
+
+func (s *AutoRejectService) AutoRejectLeaveRequests(ctx context.Context) error {
+	rows, err := s.db.Query(
 		ctx,
 		`SELECT id, created_at 
 		 FROM leave_requests 
@@ -31,33 +52,30 @@ func AutoRejectLeaveRequests() error {
 			return err
 		}
 
-		workingDays := utils.CountWorkingDays(createdAt, now)
+		workingDays := utils.CountWorkingDays(createdAt, now, func(d time.Time) bool {
+			isHoliday, _ := s.holidayRepo.IsHoliday(ctx, d)
+			return isHoliday
+		})
 
 		if workingDays >= 7 {
-			_, err = database.DB.Exec(
-				ctx,
-				`UPDATE leave_requests
-				 SET status='AUTO_REJECTED',
-				     approval_comment='Auto rejected after 7 working days'
-				 WHERE id=$1`,
-				id,
-			)
+			tx, err := s.db.Begin(ctx)
 			if err != nil {
 				return err
 			}
+			err = s.leaveRepo.UpdateStatus(ctx, tx, id, "AUTO_REJECTED", 0, "Auto rejected after 7 working days")
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+			tx.Commit(ctx)
 		}
 	}
 
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return rows.Err()
 }
-func AutoRejectExpenseRequests() error {
-	ctx := context.Background()
 
-	rows, err := database.DB.Query(
+func (s *AutoRejectService) AutoRejectExpenseRequests(ctx context.Context) error {
+	rows, err := s.db.Query(
 		ctx,
 		`SELECT id, created_at 
 		 FROM expense_requests 
@@ -78,33 +96,30 @@ func AutoRejectExpenseRequests() error {
 			return err
 		}
 
-		workingDays := utils.CountWorkingDays(createdAt, now)
+		workingDays := utils.CountWorkingDays(createdAt, now, func(d time.Time) bool {
+			isHoliday, _ := s.holidayRepo.IsHoliday(ctx, d)
+			return isHoliday
+		})
 
 		if workingDays >= 7 {
-			_, err = database.DB.Exec(
-				ctx,
-				`UPDATE expense_requests
-				 SET status='AUTO_REJECTED',
-				     approval_comment='Auto rejected after 7 working days'
-				 WHERE id=$1`,
-				id,
-			)
+			tx, err := s.db.Begin(ctx)
 			if err != nil {
 				return err
 			}
+			err = s.expenseRepo.UpdateStatus(ctx, tx, id, "AUTO_REJECTED", 0, "Auto rejected after 7 working days")
+			if err != nil {
+				tx.Rollback(ctx)
+				return err
+			}
+			tx.Commit(ctx)
 		}
 	}
 
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return rows.Err()
 }
-func AutoRejectDiscountRequests() error {
-	ctx := context.Background()
 
-	rows, err := database.DB.Query(
+func (s *AutoRejectService) AutoRejectDiscountRequests(ctx context.Context) error {
+	rows, err := s.db.Query(
 		ctx,
 		`SELECT id, created_at 
 		 FROM discount_requests 
@@ -125,10 +140,13 @@ func AutoRejectDiscountRequests() error {
 			return err
 		}
 
-		workingDays := utils.CountWorkingDays(createdAt, now)
+		workingDays := utils.CountWorkingDays(createdAt, now, func(d time.Time) bool {
+			isHoliday, _ := s.holidayRepo.IsHoliday(ctx, d)
+			return isHoliday
+		})
 
 		if workingDays >= 7 {
-			_, err = database.DB.Exec(
+			_, err = s.db.Exec(
 				ctx,
 				`UPDATE discount_requests
 				 SET status='AUTO_REJECTED',
@@ -142,9 +160,5 @@ func AutoRejectDiscountRequests() error {
 		}
 	}
 
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return rows.Err()
 }

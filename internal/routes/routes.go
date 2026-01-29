@@ -2,12 +2,41 @@ package routes
 
 import (
 	"rule-based-approval-engine/internal/api/handlers"
+	"rule-based-approval-engine/internal/app/services"
 	"rule-based-approval-engine/internal/pkg/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Register(r *gin.Engine) {
+func Register(
+	r *gin.Engine,
+	authService *services.AuthService,
+	leaveService *services.LeaveService,
+	expenseService *services.ExpenseService,
+	leaveApprovalService *services.LeaveApprovalService,
+	expenseApprovalService *services.ExpenseApprovalService,
+	ruleService *services.RuleService,
+	myRequestsService *services.MyRequestsService,
+	holidayService *services.HolidayService,
+	reportService *services.ReportService,
+	balanceService *services.BalanceService,
+	autoRejectService *services.AutoRejectService,
+	discountService *services.DiscountService,
+) {
+	// Initialize handlers with services
+	authHandler := handlers.NewAuthHandler(authService)
+	leaveHandler := handlers.NewLeaveHandler(leaveService)
+	leaveApprovalHandler := handlers.NewLeaveApprovalHandler(leaveApprovalService)
+	expenseHandler := handlers.NewExpenseHandler(expenseService)
+	expenseApprovalHandler := handlers.NewExpenseApprovalHandler(expenseApprovalService)
+	ruleHandler := handlers.NewRuleHandler(ruleService)
+	myRequestsHandler := handlers.NewMyRequestsHandler(myRequestsService)
+	holidayHandler := handlers.NewHolidayHandler(holidayService)
+	reportHandler := handlers.NewReportHandler(reportService)
+	balanceHandler := handlers.NewBalanceHandler(balanceService)
+	systemHandler := handlers.NewSystemHandler(autoRejectService)
+	discountHandler := handlers.NewDiscountHandler(discountService)
+	discountApprovalHandler := handlers.NewDiscountApprovalHandler(discountService)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "UP"})
@@ -15,9 +44,9 @@ func Register(r *gin.Engine) {
 
 	auth := r.Group("/auth")
 	{
-		auth.POST("/register", handlers.Register)
-		auth.POST("/login", handlers.Login)
-		auth.POST("/logout", handlers.Logout)
+		auth.POST("/register", authHandler.Register)
+		auth.POST("/login", authHandler.Login)
+		auth.POST("/logout", authHandler.Logout)
 
 	}
 
@@ -32,63 +61,63 @@ func Register(r *gin.Engine) {
 		})
 
 		// Balances
-		protected.GET("/balances", handlers.GetMyBalances)
+		protected.GET("/balances", balanceHandler.GetMyBalances)
 
 		leaves := protected.Group("/leaves")
 		{
-			leaves.POST("/request", handlers.ApplyLeave)
-			leaves.POST("/:id/cancel", handlers.CancelLeave)
-			leaves.GET("/my", handlers.GetMyLeaves)
+			leaves.POST("/request", leaveHandler.ApplyLeave)
+			leaves.POST("/:id/cancel", leaveHandler.CancelLeave)
+			leaves.GET("/my", myRequestsHandler.GetMyLeaves)
 
-			leaves.GET("/pending", handlers.GetPendingLeaves)
-			leaves.POST("/:id/approve", handlers.ApproveLeave)
-			leaves.POST("/:id/reject", handlers.RejectLeave)
+			leaves.GET("/pending", leaveApprovalHandler.GetPendingLeaves)
+			leaves.POST("/:id/approve", leaveApprovalHandler.ApproveLeave)
+			leaves.POST("/:id/reject", leaveApprovalHandler.RejectLeave)
 		}
 
 		expenses := protected.Group("/expenses")
 		{
-			expenses.POST("/request", handlers.ApplyExpense)
-			expenses.POST("/:id/cancel", handlers.CancelExpense)
-			expenses.GET("/my", handlers.GetMyExpenses)
+			expenses.POST("/request", expenseHandler.ApplyExpense)
+			expenses.POST("/:id/cancel", expenseHandler.CancelExpense)
+			expenses.GET("/my", myRequestsHandler.GetMyExpenses)
 
 			// Manager/Admin (if you add later)
-			expenses.GET("/pending", handlers.GetPendingExpenses)
-			expenses.POST("/:id/approve", handlers.ApproveExpense)
-			expenses.POST("/:id/reject", handlers.RejectExpense)
+			expenses.GET("/pending", expenseApprovalHandler.GetPendingExpenses)
+			expenses.POST("/:id/approve", expenseApprovalHandler.ApproveExpense)
+			expenses.POST("/:id/reject", expenseApprovalHandler.RejectExpense)
 		}
 
 		discounts := protected.Group("/discounts")
 		{
-			discounts.POST("/request", handlers.ApplyDiscount)
-			discounts.POST("/:id/cancel", handlers.CancelDiscount)
-			discounts.GET("/my", handlers.GetMyDiscounts)
+			discounts.POST("/request", discountHandler.ApplyDiscount)
+			discounts.POST("/:id/cancel", discountHandler.CancelDiscount)
+			discounts.GET("/my", myRequestsHandler.GetMyDiscounts)
 
 			// Manager/Admin (if you add later)
 
-			discounts.GET("/pending", handlers.GetPendingDiscounts)
-			discounts.POST("/:id/approve", handlers.ApproveDiscount)
-			discounts.POST("/:id/reject", handlers.RejectDiscount)
+			discounts.GET("/pending", discountApprovalHandler.GetPendingDiscounts)
+			discounts.POST("/:id/approve", discountApprovalHandler.ApproveDiscount)
+			discounts.POST("/:id/reject", discountApprovalHandler.RejectDiscount)
 		}
 
 		system := protected.Group("/system")
 		{
 
 			// Manual trigger for testing auto-reject
-			system.POST("/run-auto-reject", handlers.RunAutoReject)
+			system.POST("/run-auto-reject", systemHandler.RunAutoReject)
 		}
 
 		admin := protected.Group("/admin")
 		{
-			admin.POST("/holidays", handlers.AddHoliday)
-			admin.GET("/holidays", handlers.GetHolidays)
-			admin.DELETE("/holidays/:id", handlers.DeleteHoliday)
-			admin.POST("/rules", handlers.CreateRule)
-			admin.GET("/rules", handlers.GetRules)
-			admin.PUT("/rules/:id", handlers.UpdateRule)
-			admin.DELETE("/rules/:id", handlers.DeleteRule)
+			admin.POST("/holidays", holidayHandler.AddHoliday)
+			admin.GET("/holidays", holidayHandler.GetHolidays)
+			admin.DELETE("/holidays/:id", holidayHandler.DeleteHoliday)
+			admin.POST("/rules", ruleHandler.CreateRule)
+			admin.GET("/rules", ruleHandler.GetRules)
+			admin.PUT("/rules/:id", ruleHandler.UpdateRule)
+			admin.DELETE("/rules/:id", ruleHandler.DeleteRule)
 
-			admin.GET("/reports/request-status-distribution", handlers.GetRequestStatusDistribution)
-			admin.GET("/reports/requests-by-type", handlers.GetRequestsByType)
+			admin.GET("/reports/request-status-distribution", reportHandler.GetRequestStatusDistribution)
+			admin.GET("/reports/requests-by-type", reportHandler.GetRequestsByType)
 		}
 
 	}

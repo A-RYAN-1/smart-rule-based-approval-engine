@@ -16,7 +16,17 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
-func Register(c *gin.Context) {
+// AuthHandler handles authentication-related HTTP requests
+type AuthHandler struct {
+	authService *services.AuthService
+}
+
+// NewAuthHandler creates a new AuthHandler instance
+func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+	return &AuthHandler{authService: authService}
+}
+
+func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -29,7 +39,8 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	err := services.RegisterUser(req.Name, req.Email, req.Password)
+	ctx := c.Request.Context()
+	err := h.authService.RegisterUser(ctx, req.Name, req.Email, req.Password)
 	if err != nil {
 		status := http.StatusBadRequest
 		if err == apperrors.ErrEmailAlreadyRegistered {
@@ -51,7 +62,7 @@ func Register(c *gin.Context) {
 	)
 }
 
-func Login(c *gin.Context) {
+func (h *AuthHandler) Login(c *gin.Context) {
 	var req struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required"`
@@ -62,7 +73,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token, role, err := services.LoginUser(req.Email, req.Password)
+	ctx := c.Request.Context()
+	token, role, err := h.authService.LoginUser(ctx, req.Email, req.Password)
 	if err != nil {
 		status := http.StatusUnauthorized
 		if err == apperrors.ErrEmailRequired || err == apperrors.ErrPasswordRequired {
@@ -92,7 +104,7 @@ func Login(c *gin.Context) {
 	)
 }
 
-func Logout(c *gin.Context) {
+func (h *AuthHandler) Logout(c *gin.Context) {
 	c.SetCookie(
 		"access_token",
 		"",

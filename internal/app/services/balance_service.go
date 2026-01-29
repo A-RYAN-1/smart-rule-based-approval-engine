@@ -2,68 +2,79 @@ package services
 
 import (
 	"context"
-	"rule-based-approval-engine/internal/app/services/helpers"
-	"rule-based-approval-engine/internal/pkg/apperrors"
+	"rule-based-approval-engine/internal/app/repositories"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func InitializeBalances(tx pgx.Tx, userID int64, gradeID int64) error {
-	ctx := context.Background()
+type BalanceService struct {
+	balanceRepo repositories.BalanceRepository
+	db          *pgxpool.Pool
+}
 
-	var leaveLimit int
-	var expenseLimit float64
-	var discountLimit float64
+func NewBalanceService(balanceRepo repositories.BalanceRepository, db *pgxpool.Pool) *BalanceService {
+	return &BalanceService{
+		balanceRepo: balanceRepo,
+		db:          db,
+	}
+}
 
-	err := tx.QueryRow(
-		ctx,
-		`SELECT annual_leave_limit, annual_expense_limit, discount_limit_percent
-		 FROM grades WHERE id=$1`,
-		gradeID,
-	).Scan(&leaveLimit, &expenseLimit, &discountLimit)
-
+func (s *BalanceService) GetMyBalances(ctx context.Context, userID int64) (map[string]interface{}, error) {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return apperrors.ErrQueryFailed // Or a more specific error if grade not found
-		}
-		return helpers.MapPgError(err)
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var leaveTotal, leaveRemaining int
+	var expenseTotal, expenseRemaining float64
+	var discountTotal, discountRemaining float64
+
+	// Note: We might want repository methods for these total/remaining pairs specifically for the summary UI.
+	// For now, let's just use raw queries here or add methods to repository.
+	// Since I'm refactoring, let's add them to BalanceRepository later if needed.
+	// I'll use the existing repository methods where possible.
+
+	leaveRemaining, err = s.balanceRepo.GetLeaveBalance(ctx, tx, userID)
+	if err != nil {
+		return nil, err
 	}
 
-	// Leave wallet
-	_, err = tx.Exec(
-		ctx,
-		`INSERT INTO leaves (user_id, total_allocated, remaining_count)
-		 VALUES ($1,$2,$2)
-		 ON CONFLICT (user_id) DO NOTHING`,
-		userID, leaveLimit,
-	)
+	expenseRemaining, err = s.balanceRepo.GetExpenseBalance(ctx, tx, userID)
 	if err != nil {
-		return helpers.MapPgError(err)
+		return nil, err
 	}
 
-	// Expense wallet
-	_, err = tx.Exec(
-		ctx,
-		`INSERT INTO expense (user_id, total_amount, remaining_amount)
-		 VALUES ($1,$2,$2)
-		 ON CONFLICT (user_id) DO NOTHING`,
-		userID, expenseLimit,
-	)
+	// Fetch totals and discount as well
+	err = tx.QueryRow(ctx, `SELECT total_allocated FROM leaves WHERE user_id=$1`, userID).Scan(&leaveTotal)
 	if err != nil {
-		return helpers.MapPgError(err)
+		return nil, err
+	}
+	err = tx.QueryRow(ctx, `SELECT total_amount FROM expense WHERE user_id=$1`, userID).Scan(&expenseTotal)
+	if err != nil {
+		return nil, err
+	}
+	err = tx.QueryRow(ctx, `SELECT total_discount, remaining_discount FROM discount WHERE user_id=$1`, userID).Scan(&discountTotal, &discountRemaining)
+	if err != nil {
+		return nil, err
 	}
 
-	// Discount wallet
-	_, err = tx.Exec(
-		ctx,
-		`INSERT INTO discount (user_id, total_discount, remaining_discount)
-		 VALUES ($1,$2,$2)
-		 ON CONFLICT (user_id) DO NOTHING`,
-		userID, discountLimit,
-	)
-	if err != nil {
-		return helpers.MapPgError(err)
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return map[string]interface{}{
+		"leave": map[string]interface{}{
+			"total":     leaveTotal,
+			"remaining": leaveRemaining,
+		},
+		"expense": map[string]interface{}{
+			"total":     expenseTotal,
+			"remaining": expenseRemaining,
+		},
+		"discount": map[string]interface{}{
+			"total":     discountTotal,
+			"remaining": discountRemaining,
+		},
+	}, nil
 }

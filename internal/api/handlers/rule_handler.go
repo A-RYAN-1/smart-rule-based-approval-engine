@@ -12,7 +12,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CreateRule(c *gin.Context) {
+// RuleHandler handles rule-related HTTP requests
+type RuleHandler struct {
+	ruleService *services.RuleService
+}
+
+// NewRuleHandler creates a new RuleHandler instance
+func NewRuleHandler(ruleService *services.RuleService) *RuleHandler {
+	return &RuleHandler{ruleService: ruleService}
+}
+
+func (h *RuleHandler) CreateRule(c *gin.Context) {
 	role := c.GetString("role")
 
 	var rule models.Rule
@@ -21,7 +31,8 @@ func CreateRule(c *gin.Context) {
 		return
 	}
 
-	if err := services.CreateRule(role, rule); err != nil {
+	ctx := c.Request.Context()
+	if err := h.ruleService.CreateRule(ctx, role, rule); err != nil {
 		handleRuleError(c, err, "Failed to create rule")
 		return
 	}
@@ -29,10 +40,11 @@ func CreateRule(c *gin.Context) {
 	response.Created(c, "Rule created successfully", nil)
 }
 
-func GetRules(c *gin.Context) {
+func (h *RuleHandler) GetRules(c *gin.Context) {
 	role := c.GetString("role")
 
-	rules, err := services.GetRules(role)
+	ctx := c.Request.Context()
+	rules, err := h.ruleService.GetRules(ctx, role)
 	if err != nil {
 		handleRuleError(c, err, "Failed to fetch rules")
 		return
@@ -41,7 +53,7 @@ func GetRules(c *gin.Context) {
 	response.Success(c, "Rules fetched successfully", rules)
 }
 
-func UpdateRule(c *gin.Context) {
+func (h *RuleHandler) UpdateRule(c *gin.Context) {
 	role := c.GetString("role")
 
 	ruleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -56,7 +68,8 @@ func UpdateRule(c *gin.Context) {
 		return
 	}
 
-	if err := services.UpdateRule(role, ruleID, rule); err != nil {
+	ctx := c.Request.Context()
+	if err := h.ruleService.UpdateRule(ctx, role, ruleID, rule); err != nil {
 		handleRuleError(c, err, "Failed to update rule")
 		return
 	}
@@ -64,7 +77,7 @@ func UpdateRule(c *gin.Context) {
 	response.Success(c, "Rule updated successfully", nil)
 }
 
-func DeleteRule(c *gin.Context) {
+func (h *RuleHandler) DeleteRule(c *gin.Context) {
 	role := c.GetString("role")
 
 	ruleID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -73,7 +86,8 @@ func DeleteRule(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteRule(role, ruleID); err != nil {
+	ctx := c.Request.Context()
+	if err := h.ruleService.DeleteRule(ctx, role, ruleID); err != nil {
 		handleRuleError(c, err, "Failed to delete rule")
 		return
 	}

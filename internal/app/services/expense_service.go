@@ -4,22 +4,48 @@ import (
 	"context"
 	"strings"
 
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/app/services/helpers"
-	"rule-based-approval-engine/internal/database"
+	"rule-based-approval-engine/internal/models"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ApplyExpense(
+// ExpenseService handles business logic for expense requests
+type ExpenseService struct {
+	expenseReqRepo repositories.ExpenseRequestRepository
+	balanceRepo    repositories.BalanceRepository
+	ruleService    *RuleService
+	userRepo       repositories.UserRepository
+	db             *pgxpool.Pool
+}
+
+// NewExpenseService creates a new instance of ExpenseService
+func NewExpenseService(
+	expenseReqRepo repositories.ExpenseRequestRepository,
+	balanceRepo repositories.BalanceRepository,
+	ruleService *RuleService,
+	userRepo repositories.UserRepository,
+	db *pgxpool.Pool,
+) *ExpenseService {
+	return &ExpenseService{
+		expenseReqRepo: expenseReqRepo,
+		balanceRepo:    balanceRepo,
+		ruleService:    ruleService,
+		userRepo:       userRepo,
+		db:             db,
+	}
+}
+
+// ApplyExpense processes an expense application
+func (s *ExpenseService) ApplyExpense(
+	ctx context.Context,
 	userID int64,
 	amount float64,
 	category string,
 	reason string,
 ) (string, string, error) {
-
-	ctx := context.Background()
-
 	// ---- Input validations ----
 	if userID <= 0 {
 		return "", "", apperrors.ErrInvalidUser
@@ -33,25 +59,16 @@ func ApplyExpense(
 		return "", "", apperrors.ErrInvalidExpenseCategory
 	}
 
-	tx, err := database.DB.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return "", "", apperrors.ErrTransactionBegin
 	}
 	defer tx.Rollback(ctx)
 
 	// ---- Fetch remaining expense balance ----
-	var remaining float64
-	err = tx.QueryRow(
-		ctx,
-		`SELECT remaining_amount FROM expense WHERE user_id=$1`,
-		userID,
-	).Scan(&remaining)
-
-	if err == pgx.ErrNoRows {
-		return "", "", apperrors.ErrExpenseBalanceMissing
-	}
+	remaining, err := s.balanceRepo.GetExpenseBalance(ctx, tx, userID)
 	if err != nil {
-		return "", "", apperrors.ErrBalanceFetchFailed
+		return "", "", err
 	}
 
 	if amount > remaining {
@@ -59,13 +76,13 @@ func ApplyExpense(
 	}
 
 	// ---- Fetch user grade ----
-	gradeID, err := helpers.FetchUserGrade(ctx, tx, userID)
+	gradeID, err := s.userRepo.GetGrade(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
 	}
 
 	// ---- Fetch rule ----
-	rule, err := GetRule("EXPENSE", gradeID)
+	rule, err := s.ruleService.GetRule(ctx, "EXPENSE", gradeID)
 	if err != nil {
 		return "", "", apperrors.ErrRuleNotFound
 	}
@@ -76,30 +93,26 @@ func ApplyExpense(
 	message := result.Message
 
 	// ---- Insert expense request ----
-	_, err = tx.Exec(
-		ctx,
-		`INSERT INTO expense_requests
-		 (employee_id, amount, category, reason, status, rule_id)
-		 VALUES ($1,$2,$3,$4,$5,$6)`,
-		userID, amount, category, reason, status, rule.ID,
-	)
+	expenseReq := &models.ExpenseRequest{
+		EmployeeID: userID,
+		Amount:     amount,
+		Category:   category,
+		Reason:     reason,
+		Status:     status,
+		RuleID:     &rule.ID,
+	}
+
+	err = s.expenseReqRepo.Create(ctx, tx, expenseReq)
 	if err != nil {
 		return "", "", apperrors.ErrInsertFailed
 	}
 
 	// ---- Deduct balance if auto-approved ----
 	if status == "AUTO_APPROVED" {
-		_, err = tx.Exec(
-			ctx,
-			`UPDATE expense
-			 SET remaining_amount = remaining_amount - $1
-			 WHERE user_id=$2`,
-			amount, userID,
-		)
+		err = s.balanceRepo.DeductExpenseBalance(ctx, tx, userID, amount)
 		if err != nil {
-			return "", "", helpers.MapPgError(err)
+			return "", "", err
 		}
-
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -109,55 +122,36 @@ func ApplyExpense(
 	return message, status, nil
 }
 
-func CancelExpense(userID, requestID int64) error {
-	ctx := context.Background()
-	tx, err := database.DB.Begin(ctx)
+// CancelExpense cancels an expense request
+func (s *ExpenseService) CancelExpense(ctx context.Context, userID, requestID int64) error {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var status string
-	var amount float64
+	expenseReq, err := s.expenseReqRepo.GetByID(ctx, tx, requestID)
+	if err != nil {
+		return err
+	}
 
-	err = tx.QueryRow(
-		ctx,
-		`SELECT status, amount
-		 FROM expense_requests
-		 WHERE id=$1 AND employee_id=$2`,
-		requestID, userID,
-	).Scan(&status, &amount)
-
-	if err == pgx.ErrNoRows {
+	// Verify ownership
+	if expenseReq.EmployeeID != userID {
 		return apperrors.ErrExpenseRequestNotFound
 	}
-	if err != nil {
-		return apperrors.ErrQueryFailed
-	}
+
 	// reuse CanCancel from apply_cancel_rules.go
-	if err := helpers.CanCancel(status); err != nil {
+	if err := helpers.CanCancel(expenseReq.Status); err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE expense_requests
-		 SET status='CANCELLED'
-		 WHERE id=$1`,
-		requestID,
-	)
+	err = s.expenseReqRepo.Cancel(ctx, tx, requestID)
 	if err != nil {
 		return err
 	}
 
-	if status == "AUTO_APPROVED" {
-		_, err = tx.Exec(
-			ctx,
-			`UPDATE expense
-			 SET remaining_amount = remaining_amount + $1
-			 WHERE user_id=$2`,
-			amount, userID,
-		)
+	if expenseReq.Status == "AUTO_APPROVED" {
+		err = s.balanceRepo.RestoreExpenseBalance(ctx, tx, userID, expenseReq.Amount)
 		if err != nil {
 			return err
 		}

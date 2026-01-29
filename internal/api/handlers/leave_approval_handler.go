@@ -11,11 +11,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetPendingLeaves(c *gin.Context) {
+// LeaveApprovalHandler handles leave approval-related HTTP requests
+type LeaveApprovalHandler struct {
+	leaveApprovalService *services.LeaveApprovalService
+}
+
+// NewLeaveApprovalHandler creates a new LeaveApprovalHandler instance
+func NewLeaveApprovalHandler(leaveApprovalService *services.LeaveApprovalService) *LeaveApprovalHandler {
+	return &LeaveApprovalHandler{leaveApprovalService: leaveApprovalService}
+}
+
+func (h *LeaveApprovalHandler) GetPendingLeaves(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt64("user_id")
 
-	leaves, err := services.GetPendingLeaveRequests(role, userID)
+	ctx := c.Request.Context()
+	leaves, err := h.leaveApprovalService.GetPendingLeaveRequests(ctx, role, userID)
 	if err != nil {
 		response.Error(
 			c,
@@ -32,7 +43,8 @@ func GetPendingLeaves(c *gin.Context) {
 		leaves,
 	)
 }
-func ApproveLeave(c *gin.Context) {
+
+func (h *LeaveApprovalHandler) ApproveLeave(c *gin.Context) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
@@ -61,7 +73,9 @@ func ApproveLeave(c *gin.Context) {
 
 	approvalComment, _ := body["comment"].(string)
 
-	err = services.ApproveLeave(
+	ctx := c.Request.Context()
+	err = h.leaveApprovalService.ApproveLeave(
+		ctx,
 		role,
 		approverID,
 		requestID,
@@ -79,7 +93,7 @@ func ApproveLeave(c *gin.Context) {
 	)
 }
 
-func RejectLeave(c *gin.Context) {
+func (h *LeaveApprovalHandler) RejectLeave(c *gin.Context) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
@@ -117,7 +131,9 @@ func RejectLeave(c *gin.Context) {
 		return
 	}
 
-	err = services.RejectLeave(
+	ctx := c.Request.Context()
+	err = h.leaveApprovalService.RejectLeave(
+		ctx,
 		role,
 		approverID,
 		requestID,
@@ -143,7 +159,7 @@ func handleApprovalError(c *gin.Context, err error, message string) {
 		status = http.StatusForbidden
 	case apperrors.ErrLeaveRequestNotFound, apperrors.ErrUserNotFound:
 		status = http.StatusNotFound
-	case apperrors.ErrRequestNotPending:
+	case apperrors.ErrRequestNotPending, apperrors.ErrCommentRequired:
 		status = http.StatusBadRequest
 	}
 

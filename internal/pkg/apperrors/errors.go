@@ -50,6 +50,7 @@ var (
 	ErrAdminRequestNotAllowed    = errors.New("admin requests are not allowed")
 	ErrUnauthorizedApproval      = errors.New("unauthorized approval attempt")
 	ErrRequestCannotCancel       = errors.New("cannot cancel finalized request")
+	ErrCommentRequired           = errors.New("comment is required")
 )
 
 // --- Authentication errors ---
@@ -71,6 +72,7 @@ var (
 var (
 	ErrInvalidUser      = errors.New("invalid user")
 	ErrInvalidDateRange = errors.New("from date cannot be after to date")
+	ErrPastDate         = errors.New("leave dates cannot be in the past")
 )
 
 // --- Database errors ---

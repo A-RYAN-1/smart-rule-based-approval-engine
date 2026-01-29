@@ -4,76 +4,42 @@ import (
 	"context"
 	"time"
 
-	"rule-based-approval-engine/internal/database"
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 )
 
-func ensureAdmin(role string) error {
+type HolidayService struct {
+	holidayRepo repositories.HolidayRepository
+}
+
+func NewHolidayService(holidayRepo repositories.HolidayRepository) *HolidayService {
+	return &HolidayService{holidayRepo: holidayRepo}
+}
+
+func (s *HolidayService) ensureAdmin(role string) error {
 	if role != "ADMIN" {
 		return apperrors.ErrAdminOnly
 	}
 	return nil
 }
 
-func AddHoliday(role string, adminID int64, date time.Time, desc string) error {
-	if err := ensureAdmin(role); err != nil {
+func (s *HolidayService) AddHoliday(ctx context.Context, role string, adminID int64, date time.Time, desc string) error {
+	if err := s.ensureAdmin(role); err != nil {
 		return err
 	}
-
-	_, err := database.DB.Exec(
-		context.Background(),
-		`INSERT INTO holidays (holiday_date, description, created_by)
-		 VALUES ($1,$2,$3)`,
-		date, desc, adminID,
-	)
-
-	return err
+	return s.holidayRepo.AddHoliday(ctx, date, desc, adminID)
 }
 
-func GetHolidays(role string) ([]map[string]interface{}, error) {
-	if err := ensureAdmin(role); err != nil {
+func (s *HolidayService) GetHolidays(ctx context.Context, role string) ([]map[string]interface{}, error) {
+	if err := s.ensureAdmin(role); err != nil {
 		return nil, err
 	}
-
-	rows, err := database.DB.Query(
-		context.Background(),
-		`SELECT id, holiday_date, description FROM holidays ORDER BY holiday_date`,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var result []map[string]interface{}
-	for rows.Next() {
-		var id int64
-		var d time.Time
-		var desc string
-
-		if err := rows.Scan(&id, &d, &desc); err != nil {
-			return nil, err
-		}
-
-		result = append(result, map[string]interface{}{
-			"id":          id,
-			"date":        d.Format("2006-01-02"),
-			"description": desc,
-		})
-	}
-
-	return result, nil
+	return s.holidayRepo.GetHolidays(ctx)
 }
 
-func DeleteHoliday(role string, holidayID int64) error {
-	if err := ensureAdmin(role); err != nil {
+func (s *HolidayService) DeleteHoliday(ctx context.Context, role string, holidayID int64) error {
+	if err := s.ensureAdmin(role); err != nil {
 		return err
 	}
-
-	_, err := database.DB.Exec(
-		context.Background(),
-		`DELETE FROM holidays WHERE id=$1`,
-		holidayID,
-	)
-
-	return err
+	return s.holidayRepo.DeleteHoliday(ctx, holidayID)
 }

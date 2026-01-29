@@ -11,11 +11,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetPendingDiscounts(c *gin.Context) {
+type DiscountApprovalHandler struct {
+	discountService *services.DiscountService
+}
+
+func NewDiscountApprovalHandler(discountService *services.DiscountService) *DiscountApprovalHandler {
+	return &DiscountApprovalHandler{discountService: discountService}
+}
+
+func (h *DiscountApprovalHandler) GetPendingDiscounts(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt64("user_id")
 
-	discounts, err := services.GetPendingDiscountRequests(role, userID)
+	ctx := c.Request.Context()
+	discounts, err := h.discountService.GetPendingDiscountRequests(ctx, role, userID)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err, "failed to fetch pending discount requests")
 		return
@@ -28,7 +37,7 @@ func GetPendingDiscounts(c *gin.Context) {
 	)
 }
 
-func ApproveDiscount(c *gin.Context) {
+func (h *DiscountApprovalHandler) ApproveDiscount(c *gin.Context) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
@@ -46,7 +55,8 @@ func ApproveDiscount(c *gin.Context) {
 
 	comment, _ := body["comment"].(string)
 
-	err = services.ApproveDiscount(role, approverID, requestID, comment)
+	ctx := c.Request.Context()
+	err = h.discountService.ApproveDiscount(ctx, role, approverID, requestID, comment)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err, "unable to approve discount request")
 		return
@@ -59,7 +69,7 @@ func ApproveDiscount(c *gin.Context) {
 	)
 }
 
-func RejectDiscount(c *gin.Context) {
+func (h *DiscountApprovalHandler) RejectDiscount(c *gin.Context) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
@@ -81,7 +91,8 @@ func RejectDiscount(c *gin.Context) {
 		return
 	}
 
-	err = services.RejectDiscount(role, approverID, requestID, comment)
+	ctx := c.Request.Context()
+	err = h.discountService.RejectDiscount(ctx, role, approverID, requestID, comment)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err, "unable to reject discount request")
 		return
@@ -102,7 +113,7 @@ func handleApproveRejectDiscountError(c *gin.Context, err error, message string)
 		status = http.StatusForbidden
 	case apperrors.ErrDiscountRequestNotFound:
 		status = http.StatusNotFound
-	case apperrors.ErrDiscountRequestNotPending:
+	case apperrors.ErrDiscountRequestNotPending, apperrors.ErrCommentRequired:
 		status = http.StatusBadRequest
 	}
 

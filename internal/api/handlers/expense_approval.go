@@ -11,11 +11,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetPendingExpenses(c *gin.Context) {
+// ExpenseApprovalHandler handles expense approval-related HTTP requests
+type ExpenseApprovalHandler struct {
+	expenseApprovalService *services.ExpenseApprovalService
+}
+
+// NewExpenseApprovalHandler creates a new ExpenseApprovalHandler instance
+func NewExpenseApprovalHandler(expenseApprovalService *services.ExpenseApprovalService) *ExpenseApprovalHandler {
+	return &ExpenseApprovalHandler{expenseApprovalService: expenseApprovalService}
+}
+
+func (h *ExpenseApprovalHandler) GetPendingExpenses(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt64("user_id")
 
-	expenses, err := services.GetPendingExpenseRequests(role, userID)
+	ctx := c.Request.Context()
+	expenses, err := h.expenseApprovalService.GetPendingExpenseRequests(ctx, role, userID)
 	if err != nil {
 		response.Error(
 			c,
@@ -33,7 +44,7 @@ func GetPendingExpenses(c *gin.Context) {
 	)
 }
 
-func ApproveExpense(c *gin.Context) {
+func (h *ExpenseApprovalHandler) ApproveExpense(c *gin.Context) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
@@ -52,7 +63,8 @@ func ApproveExpense(c *gin.Context) {
 
 	comment, _ := body["comment"].(string)
 
-	err = services.ApproveExpense(role, approverID, requestID, comment)
+	ctx := c.Request.Context()
+	err = h.expenseApprovalService.ApproveExpense(ctx, role, approverID, requestID, comment)
 	if err != nil {
 		handleExpenseApprovalError(c, err, "unable to approve expense request")
 		return
@@ -61,7 +73,7 @@ func ApproveExpense(c *gin.Context) {
 	response.Success(c, "expense approved successfully", nil)
 }
 
-func RejectExpense(c *gin.Context) {
+func (h *ExpenseApprovalHandler) RejectExpense(c *gin.Context) {
 	role := c.GetString("role")
 	approverID := c.GetInt64("user_id")
 
@@ -84,7 +96,8 @@ func RejectExpense(c *gin.Context) {
 		return
 	}
 
-	err = services.RejectExpense(role, approverID, requestID, comment)
+	ctx := c.Request.Context()
+	err = h.expenseApprovalService.RejectExpense(ctx, role, approverID, requestID, comment)
 	if err != nil {
 		handleExpenseApprovalError(c, err, "unable to reject expense request")
 		return
@@ -101,7 +114,7 @@ func handleExpenseApprovalError(c *gin.Context, err error, message string) {
 		status = http.StatusForbidden
 	case apperrors.ErrExpenseRequestNotFound, apperrors.ErrUserNotFound:
 		status = http.StatusNotFound
-	case apperrors.ErrRequestNotPending:
+	case apperrors.ErrRequestNotPending, apperrors.ErrCommentRequired:
 		status = http.StatusBadRequest
 	}
 

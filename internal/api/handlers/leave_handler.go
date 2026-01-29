@@ -20,7 +20,17 @@ type LeaveApplyRequest struct {
 	Reason    string `json:"reason"`
 }
 
-func ApplyLeave(c *gin.Context) {
+// LeaveHandler handles leave-related HTTP requests
+type LeaveHandler struct {
+	leaveService *services.LeaveService
+}
+
+// NewLeaveHandler creates a new LeaveHandler instance
+func NewLeaveHandler(leaveService *services.LeaveService) *LeaveHandler {
+	return &LeaveHandler{leaveService: leaveService}
+}
+
+func (h *LeaveHandler) ApplyLeave(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(c, http.StatusUnauthorized, "unauthorized user", nil)
@@ -51,8 +61,9 @@ func ApplyLeave(c *gin.Context) {
 		return
 	}
 
-	message, status, err := services.ApplyLeave(
-		userID, from, to, days, req.LeaveType, req.Reason,
+	ctx := c.Request.Context()
+	message, status, err := h.leaveService.ApplyLeave(
+		ctx, userID, from, to, days, req.LeaveType, req.Reason,
 	)
 
 	if err != nil {
@@ -87,12 +98,15 @@ func handleApplyLeaveError(c *gin.Context, err error) {
 	case apperrors.ErrLeaveOverlap:
 		response.Error(c, http.StatusBadRequest, "overlapping leave request exists", nil)
 
+	case apperrors.ErrPastDate:
+		response.Error(c, http.StatusBadRequest, "leave dates cannot be in the past", nil)
+
 	default:
 		response.Error(c, http.StatusInternalServerError, "failed to apply leave", err.Error())
 	}
 }
 
-func CancelLeave(c *gin.Context) {
+func (h *LeaveHandler) CancelLeave(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
 	requestID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -101,7 +115,8 @@ func CancelLeave(c *gin.Context) {
 		return
 	}
 
-	err = services.CancelLeave(userID, requestID)
+	ctx := c.Request.Context()
+	err = h.leaveService.CancelLeave(ctx, userID, requestID)
 	if err != nil {
 		handleCancelLeaveError(c, err)
 		return

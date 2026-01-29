@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+
 	"rule-based-approval-engine/internal/app/services"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 	"rule-based-approval-engine/internal/pkg/response"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +16,15 @@ type DiscountApplyRequest struct {
 	Reason             string  `json:"reason"`
 }
 
-func ApplyDiscount(c *gin.Context) {
+type DiscountHandler struct {
+	discountService *services.DiscountService
+}
+
+func NewDiscountHandler(discountService *services.DiscountService) *DiscountHandler {
+	return &DiscountHandler{discountService: discountService}
+}
+
+func (h *DiscountHandler) ApplyDiscount(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(
@@ -38,7 +47,9 @@ func ApplyDiscount(c *gin.Context) {
 		return
 	}
 
-	message, status, err := services.ApplyDiscount(
+	ctx := c.Request.Context()
+	message, status, err := h.discountService.ApplyDiscount(
+		ctx,
 		userID,
 		req.DiscountPercentage,
 		req.Reason,
@@ -111,7 +122,7 @@ func handleApplyDiscountError(c *gin.Context, err error) {
 	}
 }
 
-func CancelDiscount(c *gin.Context) {
+func (h *DiscountHandler) CancelDiscount(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(
@@ -134,7 +145,8 @@ func CancelDiscount(c *gin.Context) {
 		return
 	}
 
-	err = services.CancelDiscount(userID, requestID)
+	ctx := c.Request.Context()
+	err = h.discountService.CancelDiscount(ctx, userID, requestID)
 	if err != nil {
 		handleCancelDiscountError(c, err)
 		return

@@ -2,120 +2,87 @@ package services
 
 import (
 	"context"
-	"time"
 
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/app/services/helpers"
-	"rule-based-approval-engine/internal/database"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func GetPendingExpenseRequests(role string, approverID int64) ([]map[string]interface{}, error) {
-	ctx := context.Background()
+// ExpenseApprovalService handles business logic for expense approval operations
+type ExpenseApprovalService struct {
+	expenseReqRepo repositories.ExpenseRequestRepository
+	balanceRepo    repositories.BalanceRepository
+	userRepo       repositories.UserRepository
+	db             *pgxpool.Pool
+}
 
-	var rows pgx.Rows
-	var err error
+// NewExpenseApprovalService creates a new instance of ExpenseApprovalService
+func NewExpenseApprovalService(
+	expenseReqRepo repositories.ExpenseRequestRepository,
+	balanceRepo repositories.BalanceRepository,
+	userRepo repositories.UserRepository,
+	db *pgxpool.Pool,
+) *ExpenseApprovalService {
+	return &ExpenseApprovalService{
+		expenseReqRepo: expenseReqRepo,
+		balanceRepo:    balanceRepo,
+		userRepo:       userRepo,
+		db:             db,
+	}
+}
 
+// GetPendingExpenseRequests retrieves pending expense requests based on role
+func (s *ExpenseApprovalService) GetPendingExpenseRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error) {
 	if role == "MANAGER" {
-		rows, err = database.DB.Query(
-			ctx,
-			`SELECT er.id, u.name, er.amount, er.category , er.reason,er.created_at 
-			 FROM expense_requests er
-			 JOIN users u ON er.employee_id = u.id
-			 WHERE er.status='PENDING' AND u.manager_id=$1`,
-			approverID,
-		)
+		return s.expenseReqRepo.GetPendingForManager(ctx, approverID)
 	} else if role == "ADMIN" {
-		rows, err = database.DB.Query(
-			ctx,
-			`SELECT er.id, u.name, er.amount, er.category , er.reason,er.created_at
-			 FROM expense_requests er
-			 JOIN users u ON er.employee_id = u.id
-			 WHERE er.status='PENDING'`,
-		)
+		return s.expenseReqRepo.GetPendingForAdmin(ctx)
 	} else {
 		return nil, apperrors.ErrUnauthorized
 	}
-
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var result []map[string]interface{}
-	for rows.Next() {
-		var id int64
-		var name, category string
-		var reason *string
-		var amount float64
-		var createdAt time.Time
-		if err := rows.Scan(&id, &name, &amount, &category, &reason, &createdAt); err != nil {
-			return nil, err
-		}
-
-		result = append(result, map[string]interface{}{
-			"id":         id,
-			"employee":   name,
-			"amount":     amount,
-			"category":   category,
-			"reason":     reason,
-			"created_at": createdAt.Format(time.RFC3339),
-		})
-	}
-
-	return result, nil
 }
-func ApproveExpense(
+
+// ApproveExpense approves an expense request
+func (s *ExpenseApprovalService) ApproveExpense(
+	ctx context.Context,
 	role string,
 	approverID, requestID int64,
 	comment string,
 ) error {
+	// 1️⃣ Priority Authorization Check
+	if role == "EMPLOYEE" {
+		return apperrors.ErrEmployeeCannotApprove
+	}
 
-	ctx := context.Background()
+	// 2️⃣ Priority Comment Validation
+	if comment == "" {
+		return apperrors.ErrCommentRequired
+	}
 
-	tx, err := database.DB.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var employeeID int64
-	var status string
-
-	// Fetch request
-	err = tx.QueryRow(
-		ctx,
-		`SELECT employee_id, status
-		 FROM expense_requests
-		 WHERE id=$1`,
-		requestID,
-	).Scan(&employeeID, &status)
-
-	if err == pgx.ErrNoRows {
-		return apperrors.ErrExpenseRequestNotFound
-	}
+	expenseReq, err := s.expenseReqRepo.GetByID(ctx, tx, requestID)
 	if err != nil {
 		return err
 	}
 
-	if approverID == employeeID {
+	if approverID == expenseReq.EmployeeID {
 		return apperrors.ErrSelfApprovalNotAllowed
 	}
 
 	//  Validate pending
-	if err := helpers.ValidatePendingStatus(status); err != nil {
+	if err := helpers.ValidatePendingStatus(expenseReq.Status); err != nil {
 		return err
 	}
 
 	//  Fetch requester role
-	var requesterRole string
-	err = tx.QueryRow(
-		ctx,
-		`SELECT role FROM users WHERE id=$1`,
-		employeeID,
-	).Scan(&requesterRole)
-
+	requesterRole, err := s.userRepo.GetRole(ctx, tx, expenseReq.EmployeeID)
 	if err != nil {
 		return err
 	}
@@ -131,15 +98,7 @@ func ApproveExpense(
 	}
 
 	// 6️⃣ Update request
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE expense_requests
-		 SET status='APPROVED',
-		     approved_by_id=$1,
-		     approval_comment=$2
-		 WHERE id=$3`,
-		approverID, comment, requestID,
-	)
+	err = s.expenseReqRepo.UpdateStatus(ctx, tx, requestID, "APPROVED", approverID, comment)
 	if err != nil {
 		return err
 	}
@@ -147,56 +106,45 @@ func ApproveExpense(
 	return tx.Commit(ctx)
 }
 
-func RejectExpense(
+// RejectExpense rejects an expense request
+func (s *ExpenseApprovalService) RejectExpense(
+	ctx context.Context,
 	role string,
 	approverID, requestID int64,
 	comment string,
 ) error {
+	// 1️⃣ Priority Authorization Check
+	if role == "EMPLOYEE" {
+		return apperrors.ErrEmployeeCannotApprove
+	}
 
-	ctx := context.Background()
+	// 2️⃣ Priority Comment Validation
+	if comment == "" {
+		return apperrors.ErrCommentRequired
+	}
 
-	tx, err := database.DB.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var employeeID int64
-	var status string
-	if approverID == employeeID {
-		return apperrors.ErrSelfApprovalNotAllowed
-	}
-	// 1. Fetch request
-	err = tx.QueryRow(
-		ctx,
-		`SELECT employee_id, status
-		 FROM expense_requests
-		 WHERE id=$1`,
-		requestID,
-	).Scan(&employeeID, &status)
-
-	if err == pgx.ErrNoRows {
-		return apperrors.ErrExpenseRequestNotFound
-	}
+	expenseReq, err := s.expenseReqRepo.GetByID(ctx, tx, requestID)
 	if err != nil {
 		return err
 	}
 
+	if approverID == expenseReq.EmployeeID {
+		return apperrors.ErrSelfApprovalNotAllowed
+	}
+
 	// 2. Validate pending status
-	if err := helpers.ValidatePendingStatus(status); err != nil {
+	if err := helpers.ValidatePendingStatus(expenseReq.Status); err != nil {
 		return err
 	}
 
-	// 3. Prevent self-approval
-
 	// 4. Fetch requester role
-	var requesterRole string
-	err = tx.QueryRow(
-		ctx,
-		`SELECT role FROM users WHERE id=$1`,
-		employeeID,
-	).Scan(&requesterRole)
-
+	requesterRole, err := s.userRepo.GetRole(ctx, tx, expenseReq.EmployeeID)
 	if err != nil {
 		return err
 	}
@@ -212,15 +160,7 @@ func RejectExpense(
 	}
 
 	// 7. Update request
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE expense_requests
-		 SET status='REJECTED',
-		     approved_by_id=$1,
-		     approval_comment=$2
-		 WHERE id=$3`,
-		approverID, comment, requestID,
-	)
+	err = s.expenseReqRepo.UpdateStatus(ctx, tx, requestID, "REJECTED", approverID, comment)
 	if err != nil {
 		return err
 	}

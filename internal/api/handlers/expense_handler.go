@@ -16,7 +16,17 @@ type ExpenseApplyRequest struct {
 	Reason   string  `json:"reason"`
 }
 
-func ApplyExpense(c *gin.Context) {
+// ExpenseHandler handles expense-related HTTP requests
+type ExpenseHandler struct {
+	expenseService *services.ExpenseService
+}
+
+// NewExpenseHandler creates a new ExpenseHandler instance
+func NewExpenseHandler(expenseService *services.ExpenseService) *ExpenseHandler {
+	return &ExpenseHandler{expenseService: expenseService}
+}
+
+func (h *ExpenseHandler) ApplyExpense(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
 		response.Error(
@@ -39,7 +49,9 @@ func ApplyExpense(c *gin.Context) {
 		return
 	}
 
-	message, status, err := services.ApplyExpense(
+	ctx := c.Request.Context()
+	message, status, err := h.expenseService.ApplyExpense(
+		ctx,
 		userID,
 		req.Amount,
 		req.Category,
@@ -120,7 +132,7 @@ func handleApplyExpenseError(c *gin.Context, err error) {
 	}
 }
 
-func CancelExpense(c *gin.Context) {
+func (h *ExpenseHandler) CancelExpense(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
 	requestID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -134,7 +146,8 @@ func CancelExpense(c *gin.Context) {
 		return
 	}
 
-	err = services.CancelExpense(userID, requestID)
+	ctx := c.Request.Context()
+	err = h.expenseService.CancelExpense(ctx, userID, requestID)
 	if err != nil {
 		handleCancelExpenseError(c, err)
 		return

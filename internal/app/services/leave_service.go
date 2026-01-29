@@ -4,15 +4,44 @@ import (
 	"context"
 	"time"
 
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/app/services/helpers"
-	"rule-based-approval-engine/internal/database"
+	"rule-based-approval-engine/internal/models"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 	"rule-based-approval-engine/internal/pkg/utils"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ApplyLeave(
+// LeaveService handles business logic for leave requests
+type LeaveService struct {
+	leaveReqRepo repositories.LeaveRequestRepository
+	balanceRepo  repositories.BalanceRepository
+	ruleService  *RuleService
+	userRepo     repositories.UserRepository
+	db           *pgxpool.Pool
+}
+
+// NewLeaveService creates a new instance of LeaveService
+func NewLeaveService(
+	leaveReqRepo repositories.LeaveRequestRepository,
+	balanceRepo repositories.BalanceRepository,
+	ruleService *RuleService,
+	userRepo repositories.UserRepository,
+	db *pgxpool.Pool,
+) *LeaveService {
+	return &LeaveService{
+		leaveReqRepo: leaveReqRepo,
+		balanceRepo:  balanceRepo,
+		ruleService:  ruleService,
+		userRepo:     userRepo,
+		db:           db,
+	}
+}
+
+// ApplyLeave processes a leave application
+func (s *LeaveService) ApplyLeave(
+	ctx context.Context,
 	userID int64,
 	from time.Time,
 	to time.Time,
@@ -20,8 +49,6 @@ func ApplyLeave(
 	leaveType string,
 	reason string,
 ) (string, string, error) {
-	ctx := context.Background()
-
 	// ---- Input validations ----
 	if userID <= 0 {
 		return "", "", apperrors.ErrInvalidUser
@@ -34,8 +61,15 @@ func ApplyLeave(
 	if from.After(to) {
 		return "", "", apperrors.ErrInvalidDateRange
 	}
+
+	// ---- Past date validation ----
+	today := time.Now().Truncate(24 * time.Hour)
+	if from.Before(today) {
+		return "", "", apperrors.ErrPastDate
+	}
+
 	// ---- Overlap validation ----
-	overlap, err := HasOverlappingLeave(ctx, userID, from, to)
+	overlap, err := s.leaveReqRepo.CheckOverlap(ctx, userID, from, to)
 	if err != nil {
 		return "", "", apperrors.ErrLeaveVerificationFailed
 	}
@@ -44,25 +78,16 @@ func ApplyLeave(
 		return "", "", apperrors.ErrLeaveOverlap
 	}
 
-	tx, err := database.DB.Begin(ctx)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return "", "", apperrors.ErrTransactionBegin
 	}
 	defer tx.Rollback(ctx)
 
 	// ---- Fetch remaining leave balance ----
-	var remaining int
-	err = tx.QueryRow(
-		ctx,
-		`SELECT remaining_count FROM leaves WHERE user_id=$1`,
-		userID,
-	).Scan(&remaining)
-
-	if err == pgx.ErrNoRows {
-		return "", "", apperrors.ErrLeaveBalanceMissing
-	}
+	remaining, err := s.balanceRepo.GetLeaveBalance(ctx, tx, userID)
 	if err != nil {
-		return "", "", apperrors.ErrBalanceFetchFailed
+		return "", "", err
 	}
 
 	if days > remaining {
@@ -70,13 +95,13 @@ func ApplyLeave(
 	}
 
 	// ---- Fetch user grade ----
-	gradeID, err := helpers.FetchUserGrade(ctx, tx, userID)
+	gradeID, err := s.userRepo.GetGrade(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
 	}
 
 	// ---- Fetch rule ----
-	rule, err := GetRule("LEAVE", gradeID)
+	rule, err := s.ruleService.GetRule(ctx, "LEAVE", gradeID)
 	if err != nil {
 		return "", "", apperrors.ErrRuleNotFound
 	}
@@ -86,31 +111,27 @@ func ApplyLeave(
 	status := result.Status
 	message := result.Message
 
-	_, err = tx.Exec(
-		ctx,
-		`INSERT INTO leave_requests
-		 (employee_id, from_date, to_date, reason, leave_type, status, rule_id)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		userID, from, to, reason, leaveType, status, rule.ID,
-	)
+	leaveReq := &models.LeaveRequest{
+		EmployeeID: userID,
+		FromDate:   from,
+		ToDate:     to,
+		Reason:     reason,
+		LeaveType:  leaveType,
+		Status:     status,
+		RuleID:     &rule.ID,
+	}
 
+	err = s.leaveReqRepo.Create(ctx, tx, leaveReq)
 	if err != nil {
 		return "", "", helpers.MapPgError(err)
 	}
 
 	// ---- Deduct balance if auto-approved ----
 	if status == "AUTO_APPROVED" {
-		_, err = tx.Exec(
-			ctx,
-			`UPDATE leaves
-			 SET remaining_count = remaining_count - $1
-			 WHERE user_id=$2`,
-			days, userID,
-		)
+		err = s.balanceRepo.DeductLeaveBalance(ctx, tx, userID, days)
 		if err != nil {
-			return "", "", helpers.MapPgError(err)
+			return "", "", err
 		}
-
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -120,91 +141,38 @@ func ApplyLeave(
 	return message, status, nil
 }
 
-func HasOverlappingLeave(
-	ctx context.Context,
-	userID int64,
-	fromDate, toDate time.Time,
-) (bool, error) {
-
-	var dummy int
-
-	err := database.DB.QueryRow(
-		ctx,
-		`SELECT 1
-		 FROM leave_requests
-		 WHERE employee_id = $1
-		   AND status IN ('PENDING', 'APPROVED', 'AUTO_APPROVED') 
-		   AND from_date <= $2
-		   AND to_date >= $3
-		 LIMIT 1`,
-		userID,
-		toDate,
-		fromDate,
-	).Scan(&dummy)
-
-	// pgx NO ROWS = no overlap
-	if err == pgx.ErrNoRows {
-		return false, nil
-	}
-
-	//  real system error
-	if err != nil {
-		return false, err
-	}
-
-	//  overlap exists
-	return true, nil
-}
-
-func CancelLeave(userID, requestID int64) error {
-	ctx := context.Background()
-	tx, err := database.DB.Begin(ctx)
+// CancelLeave cancels a leave request
+func (s *LeaveService) CancelLeave(ctx context.Context, userID, requestID int64) error {
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var status string
-	var from, to time.Time
-
-	err = tx.QueryRow(
-		ctx,
-		`SELECT status, from_date, to_date 
-		 FROM leave_requests 
-		 WHERE id=$1 AND employee_id=$2`,
-		requestID, userID,
-	).Scan(&status, &from, &to)
-
+	leaveReq, err := s.leaveReqRepo.GetByID(ctx, tx, requestID)
 	if err != nil {
 		return err
+	}
+
+	// Verify ownership
+	if leaveReq.EmployeeID != userID {
+		return apperrors.ErrLeaveRequestNotFound
 	}
 
 	// reuse CanCancel from apply_cancel_rules.go
-	if err := helpers.CanCancel(status); err != nil {
+	if err := helpers.CanCancel(leaveReq.Status); err != nil {
 		return err
 	}
 
-	days := utils.CalculateLeaveDays(from, to)
+	days := utils.CalculateLeaveDays(leaveReq.FromDate, leaveReq.ToDate)
 
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE leave_requests 
-		 SET status='CANCELLED' 
-		 WHERE id=$1`,
-		requestID,
-	)
+	err = s.leaveReqRepo.Cancel(ctx, tx, requestID)
 	if err != nil {
 		return err
 	}
 
-	if status == "AUTO_APPROVED" {
-		_, err = tx.Exec(
-			ctx,
-			`UPDATE leaves 
-			 SET remaining_count = remaining_count + $1
-			 WHERE user_id=$2`,
-			days, userID,
-		)
+	if leaveReq.Status == "AUTO_APPROVED" {
+		err = s.balanceRepo.RestoreLeaveBalance(ctx, tx, userID, days)
 		if err != nil {
 			return err
 		}

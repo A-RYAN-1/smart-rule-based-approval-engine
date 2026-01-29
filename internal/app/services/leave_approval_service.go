@@ -2,137 +2,100 @@ package services
 
 import (
 	"context"
-	"time"
 
+	"rule-based-approval-engine/internal/app/repositories"
 	"rule-based-approval-engine/internal/app/services/helpers"
-	"rule-based-approval-engine/internal/database"
 	"rule-based-approval-engine/internal/pkg/apperrors"
 	"rule-based-approval-engine/internal/pkg/utils"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func GetPendingLeaveRequests(role string, approverID int64) ([]map[string]interface{}, error) {
-	ctx := context.Background()
+// LeaveApprovalService handles business logic for leave approval operations
+type LeaveApprovalService struct {
+	leaveReqRepo repositories.LeaveRequestRepository
+	balanceRepo  repositories.BalanceRepository
+	userRepo     repositories.UserRepository
+	db           *pgxpool.Pool
+}
 
-	var rows pgx.Rows
-	var err error
+// NewLeaveApprovalService creates a new instance of LeaveApprovalService
+func NewLeaveApprovalService(
+	leaveReqRepo repositories.LeaveRequestRepository,
+	balanceRepo repositories.BalanceRepository,
+	userRepo repositories.UserRepository,
+	db *pgxpool.Pool,
+) *LeaveApprovalService {
+	return &LeaveApprovalService{
+		leaveReqRepo: leaveReqRepo,
+		balanceRepo:  balanceRepo,
+		userRepo:     userRepo,
+		db:           db,
+	}
+}
 
+// GetPendingLeaveRequests retrieves pending leave requests based on role
+func (s *LeaveApprovalService) GetPendingLeaveRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error) {
 	switch role {
-
 	case "MANAGER":
-		rows, err = database.DB.Query(
-			ctx,
-			`SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type , lr.reason,lr.created_at 
-			 FROM leave_requests lr
-			 JOIN users u ON lr.employee_id = u.id
-			 WHERE lr.status='PENDING'
-			   AND u.manager_id=$1`,
-			approverID,
-		)
-
+		return s.leaveReqRepo.GetPendingForManager(ctx, approverID)
 	case "ADMIN":
-		rows, err = database.DB.Query(
-			ctx,
-			`SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason,lr.created_at
-			 FROM leave_requests lr
-			 JOIN users u ON lr.employee_id = u.id
-			 WHERE lr.status='PENDING'`,
-		)
-
+		return s.leaveReqRepo.GetPendingForAdmin(ctx)
 	default:
 		return nil, apperrors.ErrUnauthorizedRole
 	}
-
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var result []map[string]interface{}
-
-	for rows.Next() {
-		var id int64
-		var name, leaveType, reason string
-		var fromDate, toDate, createdAt time.Time
-
-		if err := rows.Scan(&id, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
-			return nil, err
-		}
-
-		result = append(result, map[string]interface{}{
-			"id":         id,
-			"employee":   name,
-			"from_date":  fromDate.Format("2006-01-02"),
-			"to_date":    toDate.Format("2006-01-02"),
-			"leave_type": leaveType,
-			"reason":     reason,
-			"created_at": createdAt.Format(time.RFC3339),
-		})
-	}
-
-	return result, nil
 }
 
-func ApproveLeave(
+// ApproveLeave approves a leave request
+func (s *LeaveApprovalService) ApproveLeave(
+	ctx context.Context,
 	role string,
 	approverID, requestID int64,
 	approvalComment string,
 ) error {
-	ctx := context.Background()
+	// 1️⃣ Priority Authorization Check
+	if role == "EMPLOYEE" {
+		return apperrors.ErrEmployeeCannotApprove
+	}
 
-	tx, err := database.DB.Begin(ctx)
+	// 2️⃣ Priority Comment Validation
+	if approvalComment == "" {
+		return apperrors.ErrCommentRequired
+	}
+
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var employeeID int64
-	var status string
-	var from, to time.Time
-
-	err = tx.QueryRow(
-		ctx,
-		`SELECT employee_id, status, from_date, to_date
-		 FROM leave_requests
-		 WHERE id=$1`,
-		requestID,
-	).Scan(&employeeID, &status, &from, &to)
-
-	if err == pgx.ErrNoRows {
-		return apperrors.ErrLeaveRequestNotFound
-	}
+	leaveReq, err := s.leaveReqRepo.GetByID(ctx, tx, requestID)
 	if err != nil {
 		return err
 	}
-	if approverID == employeeID {
+
+	if approverID == leaveReq.EmployeeID {
 		return apperrors.ErrSelfApprovalNotAllowed
 	}
-	if err := helpers.ValidatePendingStatus(status); err != nil {
+
+	if err := helpers.ValidatePendingStatus(leaveReq.Status); err != nil {
 		return err
 	}
 
-	// Authorization
-	var requesterRole string
-	err = tx.QueryRow(
-		ctx,
-		`SELECT role FROM users WHERE id=$1`,
-		employeeID,
-	).Scan(&requesterRole)
+	// Authorization against requester
+	requesterRole, err := s.userRepo.GetRole(ctx, tx, leaveReq.EmployeeID)
+	if err != nil {
+		return err
+	}
 
 	if err := helpers.ValidateApproverRole(role, requesterRole); err != nil {
 		return err
 	}
-	days := utils.CalculateLeaveDays(from, to)
+
+	days := utils.CalculateLeaveDays(leaveReq.FromDate, leaveReq.ToDate)
 
 	// Deduct leave balance
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE leaves
-		 SET remaining_count = remaining_count - $1
-		 WHERE user_id=$2`,
-		days, employeeID,
-	)
+	err = s.balanceRepo.DeductLeaveBalance(ctx, tx, leaveReq.EmployeeID, days)
 	if err != nil {
 		return err
 	}
@@ -143,15 +106,7 @@ func ApproveLeave(
 	}
 
 	// Update request
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE leave_requests
-		 SET status='APPROVED',
-		     approved_by_id=$1,
-		     approval_comment=$2
-		 WHERE id=$3`,
-		approverID, approvalComment, requestID,
-	)
+	err = s.leaveReqRepo.UpdateStatus(ctx, tx, requestID, "APPROVED", approverID, approvalComment)
 	if err != nil {
 		return err
 	}
@@ -159,50 +114,44 @@ func ApproveLeave(
 	return tx.Commit(ctx)
 }
 
-func RejectLeave(
+// RejectLeave rejects a leave request
+func (s *LeaveApprovalService) RejectLeave(
+	ctx context.Context,
 	role string,
 	approverID, requestID int64,
 	rejectionComment string,
 ) error {
-	ctx := context.Background()
+	// 1️⃣ Priority Authorization Check
+	if role == "EMPLOYEE" {
+		return apperrors.ErrEmployeeCannotApprove
+	}
 
-	tx, err := database.DB.Begin(ctx)
+	// 2️⃣ Priority Comment Validation
+	if rejectionComment == "" {
+		return apperrors.ErrCommentRequired
+	}
+
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback(ctx)
 
-	var status string
-	var employeeID int64
-
-	err = tx.QueryRow(
-		ctx,
-		`SELECT employee_id, status
-		 FROM leave_requests
-		 WHERE id=$1`,
-		requestID,
-	).Scan(&employeeID, &status)
-
-	if err == pgx.ErrNoRows {
-		return apperrors.ErrLeaveRequestNotFound
-	}
+	leaveReq, err := s.leaveReqRepo.GetByID(ctx, tx, requestID)
 	if err != nil {
 		return err
 	}
 
-	if err := helpers.ValidatePendingStatus(status); err != nil {
+	if err := helpers.ValidatePendingStatus(leaveReq.Status); err != nil {
 		return err
 	}
-	if approverID == employeeID {
+
+	if approverID == leaveReq.EmployeeID {
 		return apperrors.ErrSelfApprovalNotAllowed
 	}
+
 	// Authorization
-	var requesterRole string
-	err = tx.QueryRow(
-		ctx,
-		`SELECT role FROM users WHERE id=$1`,
-		employeeID,
-	).Scan(&requesterRole)
+	requesterRole, err := s.userRepo.GetRole(ctx, tx, leaveReq.EmployeeID)
 	if err != nil {
 		return err
 	}
@@ -212,15 +161,7 @@ func RejectLeave(
 	}
 
 	// Update request
-	_, err = tx.Exec(
-		ctx,
-		`UPDATE leave_requests
-		 SET status='REJECTED',
-		     approved_by_id=$1,
-		     approval_comment=$2
-		 WHERE id=$3`,
-		approverID, rejectionComment, requestID,
-	)
+	err = s.leaveReqRepo.UpdateStatus(ctx, tx, requestID, "REJECTED", approverID, rejectionComment)
 	if err != nil {
 		return err
 	}

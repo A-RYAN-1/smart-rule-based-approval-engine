@@ -10,14 +10,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetRequestStatusDistribution(c *gin.Context) {
+type ReportHandler struct {
+	reportService *services.ReportService
+}
+
+func NewReportHandler(reportService *services.ReportService) *ReportHandler {
+	return &ReportHandler{reportService: reportService}
+}
+
+func (h *ReportHandler) GetRequestStatusDistribution(c *gin.Context) {
 	role := c.GetString("role")
 	if role != "ADMIN" {
 		handleReportError(c, apperrors.ErrAdminOnly, "Unauthorized access")
 		return
 	}
 
-	data, err := services.GetRequestStatusDistribution()
+	ctx := c.Request.Context()
+	data, err := h.reportService.GetRequestStatusDistribution(ctx)
 	if err != nil {
 		handleReportError(c, err, "Failed to fetch request status distribution")
 		return
@@ -30,14 +39,15 @@ func GetRequestStatusDistribution(c *gin.Context) {
 	)
 }
 
-func GetRequestsByType(c *gin.Context) {
+func (h *ReportHandler) GetRequestsByType(c *gin.Context) {
 	role := c.GetString("role")
 	if role != "ADMIN" {
 		handleReportError(c, apperrors.ErrAdminOnly, "Unauthorized access")
 		return
 	}
 
-	data, err := services.GetRequestsByTypeReport()
+	ctx := c.Request.Context()
+	data, err := h.reportService.GetRequestsByTypeReport(ctx)
 	if err != nil {
 		handleReportError(c, err, "Failed to fetch requests by type report")
 		return

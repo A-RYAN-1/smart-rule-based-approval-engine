@@ -15,7 +15,6 @@ type leaveRequestRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewLeaveRequestRepository creates a new instance of LeaveRequestRepository
 func NewLeaveRequestRepository(db *pgxpool.Pool) LeaveRequestRepository {
 	return &leaveRequestRepository{db: db}
 }

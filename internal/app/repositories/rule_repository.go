@@ -14,7 +14,7 @@ type ruleRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewRuleRepository creates a new instance of RuleRepository
+// instance
 func NewRuleRepository(db *pgxpool.Pool) RuleRepository {
 	return &ruleRepository{db: db}
 }

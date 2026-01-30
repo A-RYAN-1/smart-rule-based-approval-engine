@@ -51,12 +51,12 @@ func (s *ExpenseApprovalService) ApproveExpense(
 	approverID, requestID int64,
 	comment string,
 ) error {
-	// 1️⃣ Priority Authorization Check
+	// check role
 	if role == "EMPLOYEE" {
 		return apperrors.ErrEmployeeCannotApprove
 	}
 
-	// 2️⃣ Priority Comment Validation
+	// validate comment
 	if comment == "" {
 		return apperrors.ErrCommentRequired
 	}
@@ -76,28 +76,23 @@ func (s *ExpenseApprovalService) ApproveExpense(
 		return apperrors.ErrSelfApprovalNotAllowed
 	}
 
-	//  Validate pending
+	// validate status
 	if err := helpers.ValidatePendingStatus(expenseReq.Status); err != nil {
 		return err
 	}
 
-	//  Fetch requester role
+	// fetch role
 	requesterRole, err := s.userRepo.GetRole(ctx, tx, expenseReq.EmployeeID)
 	if err != nil {
 		return err
 	}
 
-	// 4️⃣ Validate authorization
+	// validate role
 	if err := helpers.ValidateApproverRole(role, requesterRole); err != nil {
 		return err
 	}
 
-	// 5️⃣ Default comment
-	if comment == "" {
-		comment = "Approved"
-	}
-
-	// 6️⃣ Update request
+	// update request
 	err = s.expenseReqRepo.UpdateStatus(ctx, tx, requestID, "APPROVED", approverID, comment)
 	if err != nil {
 		return err
@@ -113,12 +108,12 @@ func (s *ExpenseApprovalService) RejectExpense(
 	approverID, requestID int64,
 	comment string,
 ) error {
-	// 1️⃣ Priority Authorization Check
+	// check role
 	if role == "EMPLOYEE" {
 		return apperrors.ErrEmployeeCannotApprove
 	}
 
-	// 2️⃣ Priority Comment Validation
+	// validate comment
 	if comment == "" {
 		return apperrors.ErrCommentRequired
 	}

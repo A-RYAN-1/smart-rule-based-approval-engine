@@ -31,7 +31,7 @@ func (s *DiscountService) ApplyDiscount(
 	reason string,
 ) (string, string, error) {
 
-	// ---- Input validations ----
+	// validations
 	if userID <= 0 {
 		return "", "", apperrors.ErrInvalidUser
 	}
@@ -46,7 +46,7 @@ func (s *DiscountService) ApplyDiscount(
 	}
 	defer tx.Rollback(ctx)
 
-	// ---- Fetch remaining discount ----
+	// fetch remaining
 	var remaining float64
 	err = tx.QueryRow(
 		ctx,
@@ -62,24 +62,24 @@ func (s *DiscountService) ApplyDiscount(
 		return "", "", apperrors.ErrDiscountLimitExceeded
 	}
 
-	// ---- Fetch user grade ----
+	// user grade
 	gradeID, err := s.userRepo.GetGrade(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
 	}
 
-	// ---- Fetch rule ----
+	// fetch rule
 	rule, err := s.ruleService.GetRule(ctx, "DISCOUNT", gradeID)
 	if err != nil {
 		return "", "", apperrors.ErrRuleNotFound
 	}
 
-	// ---- Decision ----
+	// apply rule
 	result := helpers.MakeDecision("DISCOUNT", rule.Condition, percent)
 	status := result.Status
 	message := result.Message
 
-	// ---- Insert discount request ----
+	// create request
 	_, err = tx.Exec(
 		ctx,
 		`INSERT INTO discount_requests
@@ -186,12 +186,12 @@ func (s *DiscountService) GetPendingDiscountRequests(ctx context.Context, role s
 }
 
 func (s *DiscountService) ApproveDiscount(ctx context.Context, role string, approverID, requestID int64, comment string) error {
-	// 1️⃣ Priority Authorization Check
+	// check role
 	if role == "EMPLOYEE" {
 		return apperrors.ErrEmployeeCannotApprove
 	}
 
-	// 2️⃣ Priority Comment Validation
+	// validate comment
 	if comment == "" {
 		return apperrors.ErrCommentRequired
 	}
@@ -240,12 +240,12 @@ func (s *DiscountService) ApproveDiscount(ctx context.Context, role string, appr
 }
 
 func (s *DiscountService) RejectDiscount(ctx context.Context, role string, approverID, requestID int64, comment string) error {
-	// 1️⃣ Priority Authorization Check
+	// check role
 	if role == "EMPLOYEE" {
 		return apperrors.ErrEmployeeCannotApprove
 	}
 
-	// 2️⃣ Priority Comment Validation
+	// validate comment
 	if comment == "" {
 		return apperrors.ErrCommentRequired
 	}

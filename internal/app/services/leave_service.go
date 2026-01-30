@@ -49,7 +49,7 @@ func (s *LeaveService) ApplyLeave(
 	leaveType string,
 	reason string,
 ) (string, string, error) {
-	// ---- Input validations ----
+	// validations
 	if userID <= 0 {
 		return "", "", apperrors.ErrInvalidUser
 	}
@@ -62,13 +62,13 @@ func (s *LeaveService) ApplyLeave(
 		return "", "", apperrors.ErrInvalidDateRange
 	}
 
-	// ---- Past date validation ----
+	// date validation
 	today := time.Now().Truncate(24 * time.Hour)
 	if from.Before(today) {
 		return "", "", apperrors.ErrPastDate
 	}
 
-	// ---- Overlap validation ----
+	// check overlap
 	overlap, err := s.leaveReqRepo.CheckOverlap(ctx, userID, from, to)
 	if err != nil {
 		return "", "", apperrors.ErrLeaveVerificationFailed
@@ -84,7 +84,7 @@ func (s *LeaveService) ApplyLeave(
 	}
 	defer tx.Rollback(ctx)
 
-	// ---- Fetch remaining leave balance ----
+	// leave balance
 	remaining, err := s.balanceRepo.GetLeaveBalance(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
@@ -94,19 +94,19 @@ func (s *LeaveService) ApplyLeave(
 		return "", "", apperrors.ErrLeaveBalanceExceeded
 	}
 
-	// ---- Fetch user grade ----
+	// user grade
 	gradeID, err := s.userRepo.GetGrade(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
 	}
 
-	// ---- Fetch rule ----
+	// fetch rule
 	rule, err := s.ruleService.GetRule(ctx, "LEAVE", gradeID)
 	if err != nil {
 		return "", "", apperrors.ErrRuleNotFound
 	}
 
-	// ---- Decision ----
+	// apply rule
 	result := helpers.MakeDecision("LEAVE", rule.Condition, float64(days))
 	status := result.Status
 	message := result.Message
@@ -126,7 +126,7 @@ func (s *LeaveService) ApplyLeave(
 		return "", "", helpers.MapPgError(err)
 	}
 
-	// ---- Deduct balance if auto-approved ----
+	// deduct if auto-approved
 	if status == "AUTO_APPROVED" {
 		err = s.balanceRepo.DeductLeaveBalance(ctx, tx, userID, days)
 		if err != nil {

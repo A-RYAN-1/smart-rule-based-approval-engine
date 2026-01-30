@@ -53,12 +53,12 @@ func (s *LeaveApprovalService) ApproveLeave(
 	approverID, requestID int64,
 	approvalComment string,
 ) error {
-	// 1️⃣ Priority Authorization Check
+	// check role
 	if role == "EMPLOYEE" {
 		return apperrors.ErrEmployeeCannotApprove
 	}
 
-	// 2️⃣ Priority Comment Validation
+	// validate comment
 	if approvalComment == "" {
 		return apperrors.ErrCommentRequired
 	}
@@ -121,12 +121,12 @@ func (s *LeaveApprovalService) RejectLeave(
 	approverID, requestID int64,
 	rejectionComment string,
 ) error {
-	// 1️⃣ Priority Authorization Check
+	// check role
 	if role == "EMPLOYEE" {
 		return apperrors.ErrEmployeeCannotApprove
 	}
 
-	// 2️⃣ Priority Comment Validation
+	// validate comment
 	if rejectionComment == "" {
 		return apperrors.ErrCommentRequired
 	}

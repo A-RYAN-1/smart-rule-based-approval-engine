@@ -46,7 +46,7 @@ func (s *ExpenseService) ApplyExpense(
 	category string,
 	reason string,
 ) (string, string, error) {
-	// ---- Input validations ----
+	// validations
 	if userID <= 0 {
 		return "", "", apperrors.ErrInvalidUser
 	}
@@ -65,7 +65,7 @@ func (s *ExpenseService) ApplyExpense(
 	}
 	defer tx.Rollback(ctx)
 
-	// ---- Fetch remaining expense balance ----
+	// expense balance
 	remaining, err := s.balanceRepo.GetExpenseBalance(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
@@ -75,24 +75,24 @@ func (s *ExpenseService) ApplyExpense(
 		return "", "", apperrors.ErrExpenseLimitExceeded
 	}
 
-	// ---- Fetch user grade ----
+	// user grade
 	gradeID, err := s.userRepo.GetGrade(ctx, tx, userID)
 	if err != nil {
 		return "", "", err
 	}
 
-	// ---- Fetch rule ----
+	// fetch rule
 	rule, err := s.ruleService.GetRule(ctx, "EXPENSE", gradeID)
 	if err != nil {
 		return "", "", apperrors.ErrRuleNotFound
 	}
 
-	// ---- Decision ----
+	// apply rule
 	result := helpers.MakeDecision("EXPENSE", rule.Condition, amount)
 	status := result.Status
 	message := result.Message
 
-	// ---- Insert expense request ----
+	// create request
 	expenseReq := &models.ExpenseRequest{
 		EmployeeID: userID,
 		Amount:     amount,
@@ -107,7 +107,7 @@ func (s *ExpenseService) ApplyExpense(
 		return "", "", apperrors.ErrInsertFailed
 	}
 
-	// ---- Deduct balance if auto-approved ----
+	// deduct if auto-approved
 	if status == "AUTO_APPROVED" {
 		err = s.balanceRepo.DeductExpenseBalance(ctx, tx, userID, amount)
 		if err != nil {

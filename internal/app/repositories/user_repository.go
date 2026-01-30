@@ -14,7 +14,7 @@ type userRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewUserRepository creates a new instance of UserRepository
+// instance
 func NewUserRepository(db *pgxpool.Pool) UserRepository {
 	return &userRepository{db: db}
 }

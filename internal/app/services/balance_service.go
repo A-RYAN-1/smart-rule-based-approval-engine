@@ -30,11 +30,6 @@ func (s *BalanceService) GetMyBalances(ctx context.Context, userID int64) (map[s
 	var expenseTotal, expenseRemaining float64
 	var discountTotal, discountRemaining float64
 
-	// Note: We might want repository methods for these total/remaining pairs specifically for the summary UI.
-	// For now, let's just use raw queries here or add methods to repository.
-	// Since I'm refactoring, let's add them to BalanceRepository later if needed.
-	// I'll use the existing repository methods where possible.
-
 	leaveRemaining, err = s.balanceRepo.GetLeaveBalance(ctx, tx, userID)
 	if err != nil {
 		return nil, err

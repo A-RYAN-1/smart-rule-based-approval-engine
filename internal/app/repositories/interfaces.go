@@ -9,111 +9,106 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// UserRepository handles user data access operations
+// UserRepository
 type UserRepository interface {
-	// GetByEmail retrieves a user by email address
+	// find by email
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 
-	// GetByID retrieves a user by ID
+	// find by ID
 	GetByID(ctx context.Context, id int64) (*models.User, error)
 
-	// Create inserts a new user within a transaction
+	// create user
 	Create(ctx context.Context, tx pgx.Tx, user *models.User) (int64, error)
 
-	// CheckEmailExists checks if an email already exists within a transaction
+	// check email
 	CheckEmailExists(ctx context.Context, tx pgx.Tx, email string) (bool, error)
 
-	// GetRole retrieves a user's role within a transaction
+	// get role
 	GetRole(ctx context.Context, tx pgx.Tx, userID int64) (string, error)
 
-	// GetGrade retrieves a user's grade ID within a transaction
+	// get grade
 	GetGrade(ctx context.Context, tx pgx.Tx, userID int64) (int64, error)
 }
 
-// LeaveRequestRepository handles leave request data access operations
+// LeaveRequestRepository
 type LeaveRequestRepository interface {
-	// Create inserts a new leave request within a transaction
+	// create request
 	Create(ctx context.Context, tx pgx.Tx, req *models.LeaveRequest) error
 
-	// GetByID retrieves a leave request by ID within a transaction
+	// find by ID
 	GetByID(ctx context.Context, tx pgx.Tx, requestID int64) (*models.LeaveRequest, error)
 
-	// UpdateStatus updates the status of a leave request within a transaction
+	// update status
 	UpdateStatus(ctx context.Context, tx pgx.Tx, requestID int64, status string, approverID int64, comment string) error
 
-	// GetPendingForManager retrieves pending leave requests for a specific manager
+	// pending for manager
 	GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error)
 
-	// GetPendingForAdmin retrieves all pending leave requests
+	// pending for admin
 	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
 
-	// CheckOverlap checks if a leave request overlaps with existing requests
+	// check overlap
 	CheckOverlap(ctx context.Context, userID int64, fromDate, toDate time.Time) (bool, error)
 
-	// Cancel cancels a leave request within a transaction
+	// cancel request
 	Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error
 }
 
-// ExpenseRequestRepository handles expense request data access operations
+// ExpenseRequestRepository
 type ExpenseRequestRepository interface {
-	// Create inserts a new expense request within a transaction
+	// create request
 	Create(ctx context.Context, tx pgx.Tx, req *models.ExpenseRequest) error
-
-	// GetByID retrieves an expense request by ID within a transaction
+	// find by ID
 	GetByID(ctx context.Context, tx pgx.Tx, requestID int64) (*models.ExpenseRequest, error)
-
-	// UpdateStatus updates the status of an expense request within a transaction
+	// update status
 	UpdateStatus(ctx context.Context, tx pgx.Tx, requestID int64, status string, approverID int64, comment string) error
-
-	// GetPendingForManager retrieves pending expense requests for a specific manager
+	// pending for manager
 	GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error)
-
-	// GetPendingForAdmin retrieves all pending expense requests
+	// pending for admin
 	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
-
-	// Cancel cancels an expense request within a transaction
+	// cancel request
 	Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error
 }
 
-// RuleRepository handles rule data access operations
+// RuleRepository
 type RuleRepository interface {
-	// GetByTypeAndGrade retrieves a rule by request type and grade ID
+	// get by type/grade
 	GetByTypeAndGrade(ctx context.Context, requestType string, gradeID int64) (*models.Rule, error)
 
-	// Create inserts or updates a rule
+	// create/update rule
 	Create(ctx context.Context, rule *models.Rule) error
 
-	// GetAll retrieves all rules
+	// get all rules
 	GetAll(ctx context.Context) ([]models.Rule, error)
 
-	// Update updates an existing rule
+	// update rule
 	Update(ctx context.Context, ruleID int64, rule *models.Rule) error
 
-	// Delete deletes a rule by ID
+	// delete rule
 	Delete(ctx context.Context, ruleID int64) error
 }
 
-// BalanceRepository handles balance data access operations for leave and expense wallets
+// BalanceRepository
 type BalanceRepository interface {
-	// GetLeaveBalance retrieves the remaining leave balance for a user within a transaction
+	// get leave balance
 	GetLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64) (int, error)
 
-	// GetExpenseBalance retrieves the remaining expense balance for a user within a transaction
+	// get expense balance
 	GetExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64) (float64, error)
 
-	// DeductLeaveBalance deducts leave days from a user's balance within a transaction
+	// deduct leave
 	DeductLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64, days int) error
 
-	// DeductExpenseBalance deducts expense amount from a user's balance within a transaction
+	// deduct expense
 	DeductExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64) error
 
-	// RestoreLeaveBalance restores leave days to a user's balance within a transaction
+	// restore leave
 	RestoreLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64, days int) error
 
-	// RestoreExpenseBalance restores expense amount to a user's balance within a transaction
+	// restore expense
 	RestoreExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64) error
 
-	// InitializeBalances initializes leave, expense, and discount balances for a new user within a transaction
+	// init balances
 	InitializeBalances(ctx context.Context, tx pgx.Tx, userID int64, gradeID int64) error
 }
 

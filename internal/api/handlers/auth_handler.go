@@ -87,7 +87,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.SetCookie(
 		"access_token",
 		token,
-		3600*24, // 1 day
+		3600, // 1 hour
 		"/",
 		"",
 		false,

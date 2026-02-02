@@ -66,6 +66,7 @@ func Register(
 
 		leaves := protected.Group("/leaves")
 		{
+
 			leaves.POST("/request", leaveHandler.ApplyLeave)
 			leaves.POST("/:id/cancel", leaveHandler.CancelLeave)
 			leaves.GET("/my", myRequestsHandler.GetMyLeaves)

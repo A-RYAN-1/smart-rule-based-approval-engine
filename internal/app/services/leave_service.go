@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// LeaveService handles business logic for leave requests
+// handles business logic for leave requests
 type LeaveService struct {
 	leaveReqRepo repositories.LeaveRequestRepository
 	balanceRepo  repositories.BalanceRepository
@@ -22,7 +22,7 @@ type LeaveService struct {
 	db           *pgxpool.Pool
 }
 
-// NewLeaveService creates a new instance of LeaveService
+// creates a new instance of LeaveService
 func NewLeaveService(
 	leaveReqRepo repositories.LeaveRequestRepository,
 	balanceRepo repositories.BalanceRepository,

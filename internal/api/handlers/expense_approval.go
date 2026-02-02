@@ -11,12 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ExpenseApprovalHandler handles expense approval-related HTTP requests
+// handles expense approval-related HTTP requests
 type ExpenseApprovalHandler struct {
 	expenseApprovalService *services.ExpenseApprovalService
 }
 
-// NewExpenseApprovalHandler creates a new ExpenseApprovalHandler instance
+// creates a new ExpenseApprovalHandler instance
 func NewExpenseApprovalHandler(expenseApprovalService *services.ExpenseApprovalService) *ExpenseApprovalHandler {
 	return &ExpenseApprovalHandler{expenseApprovalService: expenseApprovalService}
 }
@@ -54,7 +54,6 @@ func (h *ExpenseApprovalHandler) ApproveExpense(c *gin.Context) {
 		return
 	}
 
-	// ✅ CHANGE: read body
 	var body map[string]interface{}
 	if err := c.ShouldBindJSON(&body); err != nil && err.Error() != "EOF" {
 		response.Error(c, http.StatusBadRequest, "invalid request body", err.Error())
@@ -83,7 +82,7 @@ func (h *ExpenseApprovalHandler) RejectExpense(c *gin.Context) {
 		return
 	}
 
-	// ✅ CHANGE: read body
+	// read body
 	var body map[string]interface{}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		response.Error(c, http.StatusBadRequest, "invalid request body", err.Error())

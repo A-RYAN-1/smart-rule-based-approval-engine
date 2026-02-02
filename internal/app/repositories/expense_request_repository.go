@@ -15,7 +15,7 @@ type expenseRequestRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewExpenseRequestRepository creates a new instance of ExpenseRequestRepository
+// creates a new instance of ExpenseRequestRepository
 func NewExpenseRequestRepository(db *pgxpool.Pool) ExpenseRequestRepository {
 	return &expenseRequestRepository{db: db}
 }
@@ -153,13 +153,33 @@ func (r *expenseRequestRepository) GetPendingForAdmin(ctx context.Context) ([]ma
 }
 
 func (r *expenseRequestRepository) Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error {
-	_, err := tx.Exec(
-		ctx,
-		`UPDATE expense_requests
-		 SET status='CANCELLED'
-		 WHERE id=$1`,
-		requestID,
-	)
-
+	_, err := tx.Exec(ctx, `UPDATE expense_requests SET status='CANCELLED' WHERE id=$1`, requestID)
 	return err
+}
+
+func (r *expenseRequestRepository) GetPendingRequests(ctx context.Context) ([]struct {
+	ID        int64
+	CreatedAt time.Time
+}, error) {
+	rows, err := r.db.Query(ctx, "SELECT id, created_at FROM expense_requests WHERE status='PENDING'")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []struct {
+		ID        int64
+		CreatedAt time.Time
+	}
+	for rows.Next() {
+		var item struct {
+			ID        int64
+			CreatedAt time.Time
+		}
+		if err := rows.Scan(&item.ID, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	return result, nil
 }

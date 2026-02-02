@@ -44,7 +44,7 @@ func (s *ExpenseApprovalService) GetPendingExpenseRequests(ctx context.Context, 
 	}
 }
 
-// ApproveExpense approves an expense request
+// approves an expense request
 func (s *ExpenseApprovalService) ApproveExpense(
 	ctx context.Context,
 	role string,
@@ -101,7 +101,7 @@ func (s *ExpenseApprovalService) ApproveExpense(
 	return tx.Commit(ctx)
 }
 
-// RejectExpense rejects an expense request
+// rejects an expense request
 func (s *ExpenseApprovalService) RejectExpense(
 	ctx context.Context,
 	role string,

@@ -1,3 +1,4 @@
+// test cases for leave service
 package tests
 
 import (
@@ -87,7 +88,3 @@ func TestLeaveService_ApplyLeave_Overlap(t *testing.T) {
 		assert.Equal(t, apperrors.ErrLeaveVerificationFailed, err)
 	})
 }
-
-// NOTE: Success cases for ApplyLeave cannot be tested here because they require
-// a non-nil *pgxpool.Pool and the starting of a transaction.
-// Refactoring LeaveService to use an interface for the DB pool would solve this.

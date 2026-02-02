@@ -12,11 +12,11 @@ import (
 )
 
 type DiscountApprovalHandler struct {
-	discountService *services.DiscountService
+	discountApprovalService services.DiscountApprovalServiceInterface
 }
 
-func NewDiscountApprovalHandler(discountService *services.DiscountService) *DiscountApprovalHandler {
-	return &DiscountApprovalHandler{discountService: discountService}
+func NewDiscountApprovalHandler(discountApprovalService services.DiscountApprovalServiceInterface) *DiscountApprovalHandler {
+	return &DiscountApprovalHandler{discountApprovalService: discountApprovalService}
 }
 
 func (h *DiscountApprovalHandler) GetPendingDiscounts(c *gin.Context) {
@@ -24,7 +24,7 @@ func (h *DiscountApprovalHandler) GetPendingDiscounts(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
 	ctx := c.Request.Context()
-	discounts, err := h.discountService.GetPendingDiscountRequests(ctx, role, userID)
+	discounts, err := h.discountApprovalService.GetPendingDiscountRequests(ctx, role, userID)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err, "failed to fetch pending discount requests")
 		return
@@ -56,7 +56,7 @@ func (h *DiscountApprovalHandler) ApproveDiscount(c *gin.Context) {
 	comment, _ := body["comment"].(string)
 
 	ctx := c.Request.Context()
-	err = h.discountService.ApproveDiscount(ctx, role, approverID, requestID, comment)
+	err = h.discountApprovalService.ApproveDiscount(ctx, role, approverID, requestID, comment)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err, "unable to approve discount request")
 		return
@@ -92,7 +92,7 @@ func (h *DiscountApprovalHandler) RejectDiscount(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	err = h.discountService.RejectDiscount(ctx, role, approverID, requestID, comment)
+	err = h.discountApprovalService.RejectDiscount(ctx, role, approverID, requestID, comment)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err, "unable to reject discount request")
 		return

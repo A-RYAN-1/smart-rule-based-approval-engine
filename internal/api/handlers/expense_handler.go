@@ -16,12 +16,12 @@ type ExpenseApplyRequest struct {
 	Reason   string  `json:"reason"`
 }
 
-// ExpenseHandler handles expense-related HTTP requests
+// handles expense-related HTTP requests
 type ExpenseHandler struct {
 	expenseService *services.ExpenseService
 }
 
-// NewExpenseHandler creates a new ExpenseHandler instance
+// creates a new ExpenseHandler instance
 func NewExpenseHandler(expenseService *services.ExpenseService) *ExpenseHandler {
 	return &ExpenseHandler{expenseService: expenseService}
 }

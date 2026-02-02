@@ -1,4 +1,4 @@
-// File: internal/api/handlers/tests/leave_handler_test.go
+// testcases for leave handler
 package tests
 
 import (

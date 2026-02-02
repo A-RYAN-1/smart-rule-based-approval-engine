@@ -22,6 +22,7 @@ func Register(
 	balanceService *services.BalanceService,
 	autoRejectService *services.AutoRejectService,
 	discountService *services.DiscountService,
+	discountApprovalService services.DiscountApprovalServiceInterface,
 ) {
 	// Initialize handlers with services
 	authHandler := handlers.NewAuthHandler(authService)
@@ -36,7 +37,7 @@ func Register(
 	balanceHandler := handlers.NewBalanceHandler(balanceService)
 	systemHandler := handlers.NewSystemHandler(autoRejectService)
 	discountHandler := handlers.NewDiscountHandler(discountService)
-	discountApprovalHandler := handlers.NewDiscountApprovalHandler(discountService)
+	discountApprovalHandler := handlers.NewDiscountApprovalHandler(discountApprovalService)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "UP"})

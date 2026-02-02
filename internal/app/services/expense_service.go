@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// ExpenseService handles business logic for expense requests
+// handles business logic for expense requests
 type ExpenseService struct {
 	expenseReqRepo repositories.ExpenseRequestRepository
 	balanceRepo    repositories.BalanceRepository
@@ -21,7 +21,7 @@ type ExpenseService struct {
 	db             *pgxpool.Pool
 }
 
-// NewExpenseService creates a new instance of ExpenseService
+// creates a new instance of ExpenseService
 func NewExpenseService(
 	expenseReqRepo repositories.ExpenseRequestRepository,
 	balanceRepo repositories.BalanceRepository,
@@ -38,7 +38,7 @@ func NewExpenseService(
 	}
 }
 
-// ApplyExpense processes an expense application
+// processes an expense application
 func (s *ExpenseService) ApplyExpense(
 	ctx context.Context,
 	userID int64,
@@ -122,7 +122,7 @@ func (s *ExpenseService) ApplyExpense(
 	return message, status, nil
 }
 
-// CancelExpense cancels an expense request
+// cancels an expense request
 func (s *ExpenseService) CancelExpense(ctx context.Context, userID, requestID int64) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {

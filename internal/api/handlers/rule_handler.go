@@ -12,12 +12,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// RuleHandler handles rule-related HTTP requests
+// handles rule-related HTTP requests
 type RuleHandler struct {
 	ruleService *services.RuleService
 }
 
-// NewRuleHandler creates a new RuleHandler instance
+// creates a new RuleHandler instance
 func NewRuleHandler(ruleService *services.RuleService) *RuleHandler {
 	return &RuleHandler{ruleService: ruleService}
 }

@@ -30,26 +30,17 @@ func (s *BalanceService) GetMyBalances(ctx context.Context, userID int64) (map[s
 	var expenseTotal, expenseRemaining float64
 	var discountTotal, discountRemaining float64
 
-	leaveRemaining, err = s.balanceRepo.GetLeaveBalance(ctx, tx, userID)
+	leaveTotal, leaveRemaining, err = s.balanceRepo.GetLeaveFullBalance(ctx, tx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	expenseRemaining, err = s.balanceRepo.GetExpenseBalance(ctx, tx, userID)
+	expenseTotal, expenseRemaining, err = s.balanceRepo.GetExpenseFullBalance(ctx, tx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Fetch totals and discount as well
-	err = tx.QueryRow(ctx, `SELECT total_allocated FROM leaves WHERE user_id=$1`, userID).Scan(&leaveTotal)
-	if err != nil {
-		return nil, err
-	}
-	err = tx.QueryRow(ctx, `SELECT total_amount FROM expense WHERE user_id=$1`, userID).Scan(&expenseTotal)
-	if err != nil {
-		return nil, err
-	}
-	err = tx.QueryRow(ctx, `SELECT total_discount, remaining_discount FROM discount WHERE user_id=$1`, userID).Scan(&discountTotal, &discountRemaining)
+	discountTotal, discountRemaining, err = s.balanceRepo.GetDiscountFullBalance(ctx, tx, userID)
 	if err != nil {
 		return nil, err
 	}

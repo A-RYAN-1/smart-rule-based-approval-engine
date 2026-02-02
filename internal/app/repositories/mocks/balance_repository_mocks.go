@@ -124,7 +124,7 @@ func (_m *BalanceRepository) InitializeBalances(ctx context.Context, tx pgx.Tx, 
 	return r0
 }
 
-// RestoreExpenseBalance provides a mock function with given fields: ctx, tx, userID, amount
+// provides a mock function with given fields: ctx, tx, userID, amount
 func (_m *BalanceRepository) RestoreExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64) error {
 	ret := _m.Called(ctx, tx, userID, amount)
 
@@ -142,7 +142,7 @@ func (_m *BalanceRepository) RestoreExpenseBalance(ctx context.Context, tx pgx.T
 	return r0
 }
 
-// RestoreLeaveBalance provides a mock function with given fields: ctx, tx, userID, days
+// provides a mock function with given fields: ctx, tx, userID, days
 func (_m *BalanceRepository) RestoreLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64, days int) error {
 	ret := _m.Called(ctx, tx, userID, days)
 
@@ -160,7 +160,72 @@ func (_m *BalanceRepository) RestoreLeaveBalance(ctx context.Context, tx pgx.Tx,
 	return r0
 }
 
-// NewBalanceRepository creates a new instance of BalanceRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+// provides a mock function with given fields: ctx, tx, userID
+func (_m *BalanceRepository) GetDiscountBalance(ctx context.Context, tx pgx.Tx, userID int64) (float64, error) {
+	ret := _m.Called(ctx, tx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDiscountBalance")
+	}
+
+	var r0 float64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, int64) (float64, error)); ok {
+		return rf(ctx, tx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, int64) float64); ok {
+		r0 = rf(ctx, tx, userID)
+	} else {
+		r0 = ret.Get(0).(float64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, pgx.Tx, int64) error); ok {
+		r1 = rf(ctx, tx, userID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// provides a mock function with given fields: ctx, tx, userID, percent
+func (_m *BalanceRepository) DeductDiscountBalance(ctx context.Context, tx pgx.Tx, userID int64, percent float64) error {
+	ret := _m.Called(ctx, tx, userID, percent)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeductDiscountBalance")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, int64, float64) error); ok {
+		r0 = rf(ctx, tx, userID, percent)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// RestoreDiscountBalance provides a mock function with given fields: ctx, tx, userID, percent
+func (_m *BalanceRepository) RestoreDiscountBalance(ctx context.Context, tx pgx.Tx, userID int64, percent float64) error {
+	ret := _m.Called(ctx, tx, userID, percent)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RestoreDiscountBalance")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, pgx.Tx, int64, float64) error); ok {
+		r0 = rf(ctx, tx, userID, percent)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+//	creates a new instance of BalanceRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
+//
 // The first argument is typically a *testing.T value.
 func NewBalanceRepository(t interface {
 	mock.TestingT

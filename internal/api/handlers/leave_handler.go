@@ -20,12 +20,12 @@ type LeaveApplyRequest struct {
 	Reason    string `json:"reason"`
 }
 
-// LeaveHandler handles leave-related HTTP requests
+// handles leave-related HTTP requests
 type LeaveHandler struct {
 	leaveService *services.LeaveService
 }
 
-// NewLeaveHandler creates a new LeaveHandler instance
+// creates a new LeaveHandler instance
 func NewLeaveHandler(leaveService *services.LeaveService) *LeaveHandler {
 	return &LeaveHandler{leaveService: leaveService}
 }

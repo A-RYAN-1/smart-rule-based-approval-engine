@@ -11,12 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// LeaveApprovalHandler handles leave approval-related HTTP requests
+// handles leave approval-related HTTP requests
 type LeaveApprovalHandler struct {
 	leaveApprovalService *services.LeaveApprovalService
 }
 
-// NewLeaveApprovalHandler creates a new LeaveApprovalHandler instance
+// creates a new LeaveApprovalHandler instance
 func NewLeaveApprovalHandler(leaveApprovalService *services.LeaveApprovalService) *LeaveApprovalHandler {
 	return &LeaveApprovalHandler{leaveApprovalService: leaveApprovalService}
 }

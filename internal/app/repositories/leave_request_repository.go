@@ -183,13 +183,33 @@ func (r *leaveRequestRepository) CheckOverlap(ctx context.Context, userID int64,
 }
 
 func (r *leaveRequestRepository) Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error {
-	_, err := tx.Exec(
-		ctx,
-		`UPDATE leave_requests 
-		 SET status='CANCELLED' 
-		 WHERE id=$1`,
-		requestID,
-	)
-
+	_, err := tx.Exec(ctx, `UPDATE leave_requests SET status='CANCELLED' WHERE id=$1`, requestID)
 	return err
+}
+
+func (r *leaveRequestRepository) GetPendingRequests(ctx context.Context) ([]struct {
+	ID        int64
+	CreatedAt time.Time
+}, error) {
+	rows, err := r.db.Query(ctx, "SELECT id, created_at FROM leave_requests WHERE status='PENDING'")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []struct {
+		ID        int64
+		CreatedAt time.Time
+	}
+	for rows.Next() {
+		var item struct {
+			ID        int64
+			CreatedAt time.Time
+		}
+		if err := rows.Scan(&item.ID, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	return result, nil
 }

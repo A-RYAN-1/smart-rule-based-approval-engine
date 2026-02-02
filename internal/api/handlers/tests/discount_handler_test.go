@@ -1,4 +1,4 @@
-// File: internal/api/handlers/tests/discount_handler_test.go
+// testcases for discount handler
 package tests
 
 import (

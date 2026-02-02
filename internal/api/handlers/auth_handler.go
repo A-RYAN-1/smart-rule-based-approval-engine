@@ -16,12 +16,12 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
-// AuthHandler handles authentication-related HTTP requests
+// handles authentication-related HTTP requests
 type AuthHandler struct {
 	authService *services.AuthService
 }
 
-// NewAuthHandler creates a new AuthHandler instance
+// creates a new AuthHandler instance
 func NewAuthHandler(authService *services.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }

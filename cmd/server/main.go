@@ -54,10 +54,12 @@ func main() {
 
 	balanceService := services.NewBalanceService(balanceRepo, database.DB)
 
-	discountService := services.NewDiscountService(ruleService, userRepo, database.DB)
+	discountRepo := repositories.NewDiscountRequestRepository(database.DB)
+	discountService := services.NewDiscountService(discountRepo, balanceRepo, ruleService, userRepo, database.DB)
+	discountApprovalService := services.NewDiscountApprovalService(discountRepo, balanceRepo, userRepo, database.DB)
 
 	autoRejectService := services.NewAutoRejectService(
-		leaveRepo, expenseRepo, holidayRepo, database.DB,
+		leaveRepo, expenseRepo, discountRepo, holidayRepo, database.DB,
 	)
 
 	router := gin.Default()
@@ -83,6 +85,7 @@ func main() {
 		balanceService,
 		autoRejectService,
 		discountService,
+		discountApprovalService,
 	)
 
 	loc, _ := time.LoadLocation("Asia/Kolkata")

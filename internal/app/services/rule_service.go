@@ -65,7 +65,7 @@ func (s *RuleService) GetRules(ctx context.Context, role string) ([]models.Rule,
 	return s.ruleRepo.GetAll(ctx)
 }
 
-// UpdateRule updates an existing rule (admin only)
+// updates an existing rule (admin only)
 func (s *RuleService) UpdateRule(ctx context.Context, role string, ruleID int64, rule models.Rule) error {
 	if role != "ADMIN" {
 		return apperrors.ErrUnauthorized
@@ -74,7 +74,7 @@ func (s *RuleService) UpdateRule(ctx context.Context, role string, ruleID int64,
 	return s.ruleRepo.Update(ctx, ruleID, &rule)
 }
 
-// DeleteRule deletes a rule by ID (admin only)
+// deletes a rule by ID (admin only)
 func (s *RuleService) DeleteRule(ctx context.Context, role string, ruleID int64) error {
 	if role != "ADMIN" {
 		return apperrors.ErrUnauthorized

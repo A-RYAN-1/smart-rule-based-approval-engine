@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// UserRepository
 type UserRepository interface {
 	// find by email
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
@@ -52,6 +51,12 @@ type LeaveRequestRepository interface {
 
 	// cancel request
 	Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error
+
+	// get pending requests for auto-rejection
+	GetPendingRequests(ctx context.Context) ([]struct {
+		ID        int64
+		CreatedAt time.Time
+	}, error)
 }
 
 // ExpenseRequestRepository
@@ -68,9 +73,36 @@ type ExpenseRequestRepository interface {
 	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
 	// cancel request
 	Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error
+
+	// get pending requests for auto-rejection
+	GetPendingRequests(ctx context.Context) ([]struct {
+		ID        int64
+		CreatedAt time.Time
+	}, error)
 }
 
-// RuleRepository
+// DiscountRequestRepository
+type DiscountRequestRepository interface {
+	// create request
+	Create(ctx context.Context, tx pgx.Tx, req *models.DiscountRequest) error
+	// find by ID
+	GetByID(ctx context.Context, tx pgx.Tx, requestID int64) (*models.DiscountRequest, error)
+	// update status
+	UpdateStatus(ctx context.Context, tx pgx.Tx, requestID int64, status string, approverID int64, comment string) error
+	// pending for manager
+	GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error)
+	// pending for admin
+	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
+	// cancel request
+	Cancel(ctx context.Context, tx pgx.Tx, requestID int64) error
+
+	// get pending requests for auto-rejection
+	GetPendingRequests(ctx context.Context) ([]struct {
+		ID        int64
+		CreatedAt time.Time
+	}, error)
+}
+
 type RuleRepository interface {
 	// get by type/grade
 	GetByTypeAndGrade(ctx context.Context, requestType string, gradeID int64) (*models.Rule, error)
@@ -93,8 +125,20 @@ type BalanceRepository interface {
 	// get leave balance
 	GetLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64) (int, error)
 
+	// get leave full balance (total and remaining)
+	GetLeaveFullBalance(ctx context.Context, tx pgx.Tx, userID int64) (total int, remaining int, err error)
+
 	// get expense balance
 	GetExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64) (float64, error)
+
+	// get expense full balance (total and remaining)
+	GetExpenseFullBalance(ctx context.Context, tx pgx.Tx, userID int64) (total float64, remaining float64, err error)
+
+	// get discount balance
+	GetDiscountBalance(ctx context.Context, tx pgx.Tx, userID int64) (float64, error)
+
+	// get discount full balance (total and remaining)
+	GetDiscountFullBalance(ctx context.Context, tx pgx.Tx, userID int64) (total float64, remaining float64, err error)
 
 	// deduct leave
 	DeductLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64, days int) error
@@ -102,11 +146,17 @@ type BalanceRepository interface {
 	// deduct expense
 	DeductExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64) error
 
+	// deduct discount
+	DeductDiscountBalance(ctx context.Context, tx pgx.Tx, userID int64, percent float64) error
+
 	// restore leave
 	RestoreLeaveBalance(ctx context.Context, tx pgx.Tx, userID int64, days int) error
 
 	// restore expense
 	RestoreExpenseBalance(ctx context.Context, tx pgx.Tx, userID int64, amount float64) error
+
+	// restore discount
+	RestoreDiscountBalance(ctx context.Context, tx pgx.Tx, userID int64, percent float64) error
 
 	// init balances
 	InitializeBalances(ctx context.Context, tx pgx.Tx, userID int64, gradeID int64) error

@@ -5,6 +5,7 @@ package mocks
 import (
 	context "context"
 	models "rule-based-approval-engine/internal/models"
+	"time"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -158,6 +159,51 @@ func (_m *ExpenseRequestRepository) UpdateStatus(ctx context.Context, tx pgx.Tx,
 	}
 
 	return r0
+}
+
+// GetPendingRequests provides a mock function with given fields: ctx
+func (_m *ExpenseRequestRepository) GetPendingRequests(ctx context.Context) ([]struct {
+	ID        int64
+	CreatedAt time.Time
+}, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPendingRequests")
+	}
+
+	var r0 []struct {
+		ID        int64
+		CreatedAt time.Time
+	}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]struct {
+		ID        int64
+		CreatedAt time.Time
+	}, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []struct {
+		ID        int64
+		CreatedAt time.Time
+	}); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]struct {
+				ID        int64
+				CreatedAt time.Time
+			})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // NewExpenseRequestRepository creates a new instance of ExpenseRequestRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

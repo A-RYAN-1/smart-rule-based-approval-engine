@@ -1,4 +1,6 @@
 // File: internal/app/services/tests/expense_service_test.go
+//
+//	test cases for apply expense service
 package tests
 
 import (
@@ -52,13 +54,3 @@ func TestExpenseService_ApplyExpense_Validation(t *testing.T) {
 		})
 	}
 }
-
-func TestExpenseService_CancelExpense_Validation(t *testing.T) {
-	// Since s.db.Begin(ctx) is called first, we can't easily test the full flow
-	// without a real DB pool or refactoring.
-	// But we can test that it returns error if db is nil (panic or error depending on implementation)
-	// Actually, let's focus on logic that happens after DB if possible,
-	// but here DB is the first thing.
-}
-
-// NOTE: Success cases and DB-integrated paths are limited by the concrete *pgxpool.Pool dependency.

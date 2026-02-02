@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { User } from '@/types';
 import { authService } from '@/services/auth.service';
 import { toast } from 'sonner';
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -46,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      // 🔥 CRITICAL: Clear ALL cached queries BEFORE login to prevent data leakage
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      
       const user = await authService.login(email, password);
       console.log('AuthContext: Setting user:', user);
       setUser(user);
@@ -81,6 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authService.logout();
       setUser(null);
       localStorage.removeItem('approval_engine_user');
+      await queryClient.cancelQueries();
+      queryClient.clear();
       toast.success('Logged out');
     } catch (error) {
       console.error('Logout error', error);

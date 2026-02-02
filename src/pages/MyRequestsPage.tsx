@@ -64,7 +64,19 @@ export default function MyRequestsPage() {
   const filteredRequests = useMemo(() => {
     return allRequests.filter(r => {
       const typeMatch = activeTab === 'all' || r.type === activeTab;
-      const statusMatch = statusFilter === 'all' || r.status === statusFilter;
+      
+      // Group auto_approved with approved, auto_rejected with rejected
+      let statusMatch = false;
+      if (statusFilter === 'all') {
+        statusMatch = true;
+      } else if (statusFilter === 'approved') {
+        statusMatch = r.status === 'approved' || r.status === 'auto_approved';
+      } else if (statusFilter === 'rejected') {
+        statusMatch = r.status === 'rejected' || r.status === 'auto_rejected';
+      } else {
+        statusMatch = r.status === statusFilter;
+      }
+      
       return typeMatch && statusMatch;
     });
   }, [allRequests, activeTab, statusFilter]);
@@ -145,7 +157,7 @@ export default function MyRequestsPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-status-approved">
-                {allRequests.filter(r => r.status === 'approved').length}
+                {allRequests.filter(r => r.status === 'approved' || r.status === 'auto_approved').length}
               </p>
               <p className="text-sm text-muted-foreground">Approved</p>
             </CardContent>
@@ -153,7 +165,7 @@ export default function MyRequestsPage() {
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-status-rejected">
-                {allRequests.filter(r => r.status === 'rejected').length}
+                {allRequests.filter(r => r.status === 'rejected' || r.status === 'auto_rejected').length}
               </p>
               <p className="text-sm text-muted-foreground">Rejected</p>
             </CardContent>

@@ -63,11 +63,7 @@ func main() {
 	)
 
 	router := gin.Default()
-<<<<<<< Updated upstream
-=======
-	routes.Register(router) 
-	// ✅ CORS CONFIGURATION
->>>>>>> Stashed changes
+
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},

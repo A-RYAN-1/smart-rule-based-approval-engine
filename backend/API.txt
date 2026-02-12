@@ -1,0 +1,257 @@
+{
+  "info": {
+    "name": "Rule Based Approval Engine (Go + Postgres)",
+    "_postman_id": "rb-approval-engine-001",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Complete API collection with HttpOnly JWT cookies, Admin, and Auto-Reject"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" }
+  ],
+  "item": [
+
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Employee",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Employee One\",\n  \"email\": \"employee@test.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Manager",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Lee Johnson\",\n  \"email\": \"manager@company.com\",\n  \"password\": \"Lee@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Admin",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sophia Carter\",\n  \"email\": \"admin@company.com\",\n  \"password\": \"Sophia@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login Employee",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"employee@test.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login Manager",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@company.com\",\n  \"password\": \"Lee@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@company.com\",\n  \"password\": \"Sophia@123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/auth/logout"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Balances",
+      "item": [
+        {
+          "name": "Get My Balances",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/balances"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Leave Requests",
+      "item": [
+        {
+          "name": "Apply Leave",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/leaves/request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_date\": \"2026-02-01\",\n  \"to_date\": \"2026-02-03\",\n  \"leave_type\": \"EARN\",\n  \"reason\": \"Family function\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Leave",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/leaves/1/cancel"
+          }
+        },
+        {
+          "name": "Pending Leaves (Manager/Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/leaves/pending"
+          }
+        },
+        {
+          "name": "Approve Leave",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/leaves/1/approve"
+          }
+        },
+        {
+          "name": "Reject Leave",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/leaves/1/reject"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Expense Requests",
+      "item": [
+        {
+          "name": "Apply Expense",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/expenses/request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 4000,\n  \"category\": \"Travel\",\n  \"reason\": \"Client visit\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Expense",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/expenses/1/cancel"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Discount Requests",
+      "item": [
+        {
+          "name": "Apply Discount",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/discounts/request",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discount_percentage\": 8,\n  \"reason\": \"Loan benefit\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Cancel Discount",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/discounts/1/cancel"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Admin - Holidays",
+      "item": [
+        {
+          "name": "Add Holiday",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/admin/holidays",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-03-25\",\n  \"description\": \"Company Foundation Day\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Holidays",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/admin/holidays"
+          }
+        },
+        {
+          "name": "Delete Holiday",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/admin/holidays/1"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Run Auto Reject (Manual Trigger)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/system/run-auto-reject"
+          }
+        }
+      ]
+    }
+
+  ]
+}
+

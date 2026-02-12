@@ -146,3 +146,13 @@ func (s *AuthService) LoginUser(ctx context.Context, email, password string) (st
 
 	return token, user.Role, nil
 }
+
+// GetUserByEmail fetches a user by email
+func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	return s.userRepo.GetByEmail(ctx, email)
+}
+
+// GetUserByID fetches a user by ID
+func (s *AuthService) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
+	return s.userRepo.GetByID(ctx, id)
+}

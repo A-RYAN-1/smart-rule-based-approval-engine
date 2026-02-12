@@ -33,14 +33,30 @@ func (h *MyRequestsHandler) GetMyRequests(c *gin.Context) {
 		return
 	}
 
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
 	ctx := c.Request.Context()
-	data, err := h.myRequestsService.GetMyRequests(ctx, userID, reqType)
+	data, total, err := h.myRequestsService.GetMyRequests(ctx, userID, reqType, limit, offset)
 	if err != nil {
 		handleRequestError(c, err, "failed to fetch requests")
 		return
 	}
 
-	response.Success(c, "requests fetched successfully", data)
+	response.Success(c, "requests fetched successfully", gin.H{
+		"requests": data,
+		"total":    total,
+	})
 }
 
 func (h *MyRequestsHandler) GetMyAllRequests(c *gin.Context) {
@@ -72,6 +88,36 @@ func (h *MyRequestsHandler) GetMyAllRequests(c *gin.Context) {
 
 	response.Success(c, "requests fetched successfully", data)
 }
+func (h *MyRequestsHandler) GetPendingAllRequests(c *gin.Context) {
+	role := c.GetString("role")
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		handleRequestError(c, apperrors.ErrUnauthorizedUser, "failed to fetch requests")
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
+	ctx := c.Request.Context()
+	data, err := h.myRequestsService.GetPendingAllRequests(ctx, role, userID, limit, offset)
+	if err != nil {
+		handleRequestError(c, err, "failed to fetch requests")
+		return
+	}
+
+	response.Success(c, "pending requests fetched successfully", data)
+}
 
 func handleRequestError(c *gin.Context, err error, message string) {
 	status := http.StatusInternalServerError
@@ -86,4 +132,20 @@ func handleRequestError(c *gin.Context, err error, message string) {
 	}
 
 	response.Error(c, status, message, err.Error())
+}
+
+// Helper methods for specific routes
+func (h *MyRequestsHandler) GetMyLeaves(c *gin.Context) {
+	c.Request.URL.RawQuery = "type=LEAVE"
+	h.GetMyRequests(c)
+}
+
+func (h *MyRequestsHandler) GetMyExpenses(c *gin.Context) {
+	c.Request.URL.RawQuery = "type=EXPENSE"
+	h.GetMyRequests(c)
+}
+
+func (h *MyRequestsHandler) GetMyDiscounts(c *gin.Context) {
+	c.Request.URL.RawQuery = "type=DISCOUNT"
+	h.GetMyRequests(c)
 }

@@ -16,17 +16,18 @@ export const authService = {
         const response = await api.post<any>('/auth/login', { email, password });
         const responseData = response.data.data || response.data;
 
-        if (!responseData.role) {
+        // Check for user object in response (standardized backend)
+        const userData = responseData.user || responseData;
+
+        if (!userData.role) {
             throw new Error('Invalid login response: Missing role');
         }
 
-        // If backend returns user object inside data, use it.
-        // Otherwise, construct from responseData
         const user: User = {
-            id: responseData.id || 0,
-            name: responseData.name || email.split('@')[0],
-            email: responseData.email || email,
-            role: responseData.role.toLowerCase() as any,
+            id: userData.id || 0,
+            name: userData.name || email.split('@')[0],
+            email: userData.email || email,
+            role: userData.role.toLowerCase() as any,
         };
 
         return user;
@@ -42,7 +43,7 @@ export const authService = {
     },
 
     async getUserInfo(): Promise<User> {
-        const response = await api.get<any>('/api/me');
+        const response = await api.get<any>('/me');
         const data = response.data.data || response.data;
         return {
             id: data.id,

@@ -185,13 +185,13 @@ func NewExpenseApprovalService(
 }
 
 // GetPendingExpenseRequests retrieves pending expense requests based on role
-func (s *ExpenseApprovalService) GetPendingExpenseRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error) {
+func (s *ExpenseApprovalService) GetPendingExpenseRequests(ctx context.Context, role string, approverID int64, limit, offset int) ([]map[string]interface{}, int, error) {
 	if role == constants.RoleManager {
-		return s.expenseReqRepo.GetPendingForManager(ctx, approverID)
+		return s.expenseReqRepo.GetPendingForManager(ctx, approverID, limit, offset)
 	} else if role == constants.RoleAdmin {
-		return s.expenseReqRepo.GetPendingForAdmin(ctx)
+		return s.expenseReqRepo.GetPendingForAdmin(ctx, limit, offset)
 	} else {
-		return nil, apperrors.ErrUnauthorized
+		return nil, 0, apperrors.ErrUnauthorized
 	}
 }
 

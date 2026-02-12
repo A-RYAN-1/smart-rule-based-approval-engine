@@ -26,15 +26,21 @@ const (
 		FROM discount_requests dr
 		JOIN users u ON dr.employee_id = u.id
 		WHERE dr.status='PENDING' AND u.manager_id=$1
+		ORDER BY dr.created_at DESC
+		LIMIT $2 OFFSET $3
 	`
 	discountQueryGetPendingForAdmin = `
 		SELECT dr.id, u.name, dr.discount_percentage, dr.reason, dr.created_at
 		FROM discount_requests dr
 		JOIN users u ON dr.employee_id = u.id
 		WHERE dr.status='PENDING'
+		ORDER BY dr.created_at DESC
+		LIMIT $1 OFFSET $2
 	`
 	discountQueryCancel             = `UPDATE discount_requests SET status='CANCELLED' WHERE id=$1`
 	discountQueryGetPendingRequests = "SELECT id, created_at FROM discount_requests WHERE status='PENDING'"
+	discountQueryCountPendingForManager = `SELECT COUNT(*) FROM discount_requests dr JOIN users u ON dr.employee_id = u.id WHERE dr.status='PENDING' AND u.manager_id=$1`
+	discountQueryCountPendingForAdmin   = `SELECT COUNT(*) FROM discount_requests WHERE status='PENDING'`
 )
 
 type discountRequestRepository struct {
@@ -80,10 +86,16 @@ func (r *discountRequestRepository) UpdateStatus(ctx context.Context, tx interfa
 	return utils.MapPgError(err)
 }
 
-func (r *discountRequestRepository) GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error) {
-	rows, err := r.db.Query(ctx, discountQueryGetPendingForManager, managerID)
+func (r *discountRequestRepository) GetPendingForManager(ctx context.Context, managerID int64, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, discountQueryCountPendingForManager, managerID).Scan(&total)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, 0, utils.MapPgError(err)
+	}
+
+	rows, err := r.db.Query(ctx, discountQueryGetPendingForManager, managerID, limit, offset)
+	if err != nil {
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -94,7 +106,7 @@ func (r *discountRequestRepository) GetPendingForManager(ctx context.Context, ma
 		var percent float64
 		var createdAt interface{}
 		if err := rows.Scan(&id, &name, &percent, &reason, &createdAt); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 		result = append(result, map[string]interface{}{
 			"id":                  id,
@@ -104,13 +116,19 @@ func (r *discountRequestRepository) GetPendingForManager(ctx context.Context, ma
 			"created_at":          createdAt,
 		})
 	}
-	return result, nil
+	return result, total, nil
 }
 
-func (r *discountRequestRepository) GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error) {
-	rows, err := r.db.Query(ctx, discountQueryGetPendingForAdmin)
+func (r *discountRequestRepository) GetPendingForAdmin(ctx context.Context, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, discountQueryCountPendingForAdmin).Scan(&total)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, 0, utils.MapPgError(err)
+	}
+
+	rows, err := r.db.Query(ctx, discountQueryGetPendingForAdmin, limit, offset)
+	if err != nil {
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -121,7 +139,7 @@ func (r *discountRequestRepository) GetPendingForAdmin(ctx context.Context) ([]m
 		var percent float64
 		var createdAt interface{}
 		if err := rows.Scan(&id, &name, &percent, &reason, &createdAt); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 		result = append(result, map[string]interface{}{
 			"id":                  id,
@@ -131,7 +149,7 @@ func (r *discountRequestRepository) GetPendingForAdmin(ctx context.Context) ([]m
 			"created_at":          createdAt,
 		})
 	}
-	return result, nil
+	return result, total, nil
 }
 
 func (r *discountRequestRepository) Cancel(ctx context.Context, tx interfaces.Tx, requestID int64) error {

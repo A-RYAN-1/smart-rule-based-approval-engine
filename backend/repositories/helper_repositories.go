@@ -22,6 +22,9 @@ const (
 		 FROM discount_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`
+	helperQueryCountMyLeaves    = `SELECT COUNT(*) FROM leave_requests WHERE employee_id = $1`
+	helperQueryCountMyExpenses  = `SELECT COUNT(*) FROM expense_requests WHERE employee_id = $1`
+	helperQueryCountMyDiscounts = `SELECT COUNT(*) FROM discount_requests WHERE employee_id = $1`
 	helperQueryAddHoliday = `INSERT INTO holidays (holiday_date, description, created_by)
 		 VALUES ($1,$2,$3)`
 	helperQueryGetHolidays   = `SELECT id, holiday_date, description FROM holidays ORDER BY holiday_date`
@@ -75,14 +78,20 @@ func NewMyRequestsRepository(ctx context.Context, db interfaces.DB) interfaces.M
 	return &myRequestsRepository{db: db}
 }
 
-func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
+func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID int64, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, helperQueryCountMyLeaves, userID).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
-		helperQueryGetMyLeaves,
-		userID,
+		helperQueryGetMyLeaves+" LIMIT $2 OFFSET $3",
+		userID, limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -110,7 +119,7 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			&comment,
 			&createdAt,
 		); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		response := map[string]interface{}{
@@ -133,20 +142,26 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
-func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
+func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID int64, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, helperQueryCountMyExpenses, userID).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
-		helperQueryGetMyExpenses,
-		userID,
+		helperQueryGetMyExpenses+" LIMIT $2 OFFSET $3",
+		userID, limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -172,7 +187,7 @@ func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID 
 			&comment,
 			&createdAt,
 		); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
@@ -186,17 +201,23 @@ func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID 
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
-func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
+func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID int64, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, helperQueryCountMyDiscounts, userID).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
-		helperQueryGetMyDiscounts,
-		userID,
+		helperQueryGetMyDiscounts+" LIMIT $2 OFFSET $3",
+		userID, limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -220,7 +241,7 @@ func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID
 			&comment,
 			&createdAt,
 		); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
@@ -233,12 +254,14 @@ func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
+
 func (r *myRequestsRepository) GetMyAllRequests(ctx context.Context, userID int64, limit, offset int) (leaves []map[string]interface{}, expenses []map[string]interface{}, discounts []map[string]interface{}, total int, err error) {
-	// This repository handles specific request types.
-	// For combined requests, use AggregatedRepository.
-	// However, we satisfy the interface here for consistency.
+	return nil, nil, nil, 0, nil
+}
+
+func (r *myRequestsRepository) GetPendingAllRequests(ctx context.Context, role string, approverID int64, limit, offset int) (leaves []map[string]interface{}, expenses []map[string]interface{}, discounts []map[string]interface{}, total int, err error) {
 	return nil, nil, nil, 0, nil
 }
 

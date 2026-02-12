@@ -8,7 +8,8 @@ import (
 	"testing"
 
 	"github.com/ankita-advitot/rule_based_approval_engine/app/auth"
-	"github.com/ankita-advitot/rule_based_approval_engine/app/auth/mocks"
+	"github.com/ankita-advitot/rule_based_approval_engine/mocks"
+	"github.com/ankita-advitot/rule_based_approval_engine/models"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/apperrors"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -129,6 +130,12 @@ func TestAuthHandler_Login(t *testing.T) {
 			},
 			mockSetup: func(s *mocks.AuthService) {
 				s.EXPECT().LoginUser(mock.Anything, "john@example.com", "password123").Return("mock-token", "ADMIN", nil)
+				s.EXPECT().GetUserByEmail(mock.Anything, "john@example.com").Return(&models.User{
+					ID:    1,
+					Name:  "John Doe",
+					Email: "john@example.com",
+					Role:  "ADMIN",
+				}, nil)
 			},
 			expectedStatus: http.StatusOK,
 		},

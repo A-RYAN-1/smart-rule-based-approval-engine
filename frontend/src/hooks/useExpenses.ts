@@ -3,19 +3,20 @@ import { expenseService } from '@/services/expense.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export function useExpenses() {
+export function useExpenses(params?: { myLimit?: number; myOffset?: number; pendingLimit?: number; pendingOffset?: number }) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'admin';
 
     const myExpensesQuery = useQuery({
-        queryKey: ['expenses', 'my'],
-        queryFn: expenseService.getMyExpenses,
+        queryKey: ['expenses', 'my', params?.myLimit, params?.myOffset],
+        queryFn: () => expenseService.getMyExpenses(params?.myLimit || 10, params?.myOffset || 0),
+        enabled: !!user && user.role !== 'admin',
     });
 
     const pendingExpensesQuery = useQuery({
-        queryKey: ['expenses', 'pending'],
-        queryFn: expenseService.getPendingExpenses,
+        queryKey: ['expenses', 'pending', params?.pendingLimit, params?.pendingOffset],
+        queryFn: () => expenseService.getPendingExpenses(params?.pendingLimit || 10, params?.pendingOffset || 0),
         enabled: isManagerOrAdmin,
         retry: false,
     });
@@ -59,9 +60,11 @@ export function useExpenses() {
     });
 
     return {
-        myExpenses: myExpensesQuery.data || [],
+        myExpenses: myExpensesQuery.data?.requests || [],
+        myTotal: myExpensesQuery.data?.total || 0,
         isLoadingMyExpenses: myExpensesQuery.isLoading,
-        pendingExpenses: pendingExpensesQuery.data || [],
+        pendingExpenses: pendingExpensesQuery.data?.requests || [],
+        pendingTotal: pendingExpensesQuery.data?.total || 0,
         isLoadingPendingExpenses: pendingExpensesQuery.isLoading,
         requestExpense: requestExpenseMutation.mutateAsync,
         cancelExpense: cancelExpenseMutation.mutateAsync,

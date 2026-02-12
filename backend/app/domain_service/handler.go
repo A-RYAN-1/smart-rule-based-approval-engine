@@ -121,14 +121,30 @@ func (h *DiscountApprovalHandler) GetPendingDiscounts(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt64("user_id")
 
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
 	ctx := c.Request.Context()
-	discounts, err := h.discountApprovalService.GetPendingRequests(ctx, role, userID)
+	discounts, total, err := h.discountApprovalService.GetPendingRequests(ctx, role, userID, limit, offset)
 	if err != nil {
 		handleApproveRejectDiscountError(c, err)
 		return
 	}
 
-	response.Success(c, "pending discount requests fetched successfully", discounts)
+	response.Success(c, "pending discount requests fetched successfully", gin.H{
+		"requests": discounts,
+		"total":    total,
+	})
 }
 
 func (h *DiscountApprovalHandler) ApproveDiscount(c *gin.Context) {

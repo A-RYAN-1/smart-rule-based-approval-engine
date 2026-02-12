@@ -27,13 +27,19 @@ const (
 	expenseQueryGetPendingForManager = `SELECT er.id, u.name, er.amount, er.category, er.reason, er.created_at 
 		 FROM expense_requests er
 		 JOIN users u ON er.employee_id = u.id
-		 WHERE er.status='PENDING' AND u.manager_id=$1`
+		 WHERE er.status='PENDING' AND u.manager_id=$1
+		 ORDER BY er.created_at DESC
+		 LIMIT $2 OFFSET $3`
 	expenseQueryGetPendingForAdmin = `SELECT er.id, u.name, er.amount, er.category, er.reason, er.created_at
 		 FROM expense_requests er
 		 JOIN users u ON er.employee_id = u.id
-		 WHERE er.status='PENDING'`
+		 WHERE er.status='PENDING'
+		 ORDER BY er.created_at DESC
+		 LIMIT $1 OFFSET $2`
 	expenseQueryCancel             = `UPDATE expense_requests SET status='CANCELLED' WHERE id=$1`
 	expenseQueryGetPendingRequests = "SELECT id, created_at FROM expense_requests WHERE status='PENDING'"
+	expenseQueryCountPendingForManager = `SELECT COUNT(*) FROM expense_requests er JOIN users u ON er.employee_id = u.id WHERE er.status='PENDING' AND u.manager_id=$1`
+	expenseQueryCountPendingForAdmin   = `SELECT COUNT(*) FROM expense_requests WHERE status='PENDING'`
 )
 
 type expenseRequestRepository struct {
@@ -90,14 +96,20 @@ func (r *expenseRequestRepository) UpdateStatus(ctx context.Context, tx interfac
 	return utils.MapPgError(err)
 }
 
-func (r *expenseRequestRepository) GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error) {
+func (r *expenseRequestRepository) GetPendingForManager(ctx context.Context, managerID int64, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, expenseQueryCountPendingForManager, managerID).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
 		expenseQueryGetPendingForManager,
-		managerID,
+		managerID, limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -111,7 +123,7 @@ func (r *expenseRequestRepository) GetPendingForManager(ctx context.Context, man
 		var createdAt time.Time
 
 		if err := rows.Scan(&id, &name, &amount, &category, &reason, &createdAt); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
@@ -124,16 +136,23 @@ func (r *expenseRequestRepository) GetPendingForManager(ctx context.Context, man
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
-func (r *expenseRequestRepository) GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error) {
+func (r *expenseRequestRepository) GetPendingForAdmin(ctx context.Context, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, expenseQueryCountPendingForAdmin).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
 		expenseQueryGetPendingForAdmin,
+		limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -147,7 +166,7 @@ func (r *expenseRequestRepository) GetPendingForAdmin(ctx context.Context) ([]ma
 		var createdAt time.Time
 
 		if err := rows.Scan(&id, &name, &amount, &category, &reason, &createdAt); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
@@ -160,7 +179,7 @@ func (r *expenseRequestRepository) GetPendingForAdmin(ctx context.Context) ([]ma
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
 func (r *expenseRequestRepository) Cancel(ctx context.Context, tx interfaces.Tx, requestID int64) error {

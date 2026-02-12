@@ -12,10 +12,11 @@ interface CreateLeaveRequestPayload {
 }
 
 export const leaveService = {
-    async getMyLeaves(): Promise<LeaveRequest[]> {
-        const response = await api.get<any>('/leaves/my');
-        const data = response.data.data || [];
-        return data.map(transformLeaveRequest);
+    async getMyLeaves(limit = 10, offset = 0): Promise<{ requests: LeaveRequest[]; total: number }> {
+        const response = await api.get<any>(`/leaves/my?limit=${limit}&offset=${offset}`);
+        const result = response.data.data || response.data;
+        const requests = (result.requests || []).map(transformLeaveRequest);
+        return { requests, total: result.total || 0 };
     },
 
     async requestLeave(payload: { fromDate: string; toDate: string; leaveType: string; reason: string }): Promise<LeaveRequest> {
@@ -34,11 +35,11 @@ export const leaveService = {
     },
 
     // Manager/Admin only
-    async getPendingLeaves(): Promise<LeaveRequest[]> {
-        const response = await api.get<any>('/leaves/pending');
-        // Check if response is array or wrapped
-        const data = Array.isArray(response.data) ? response.data : (response.data.data || []);
-        return data.map(transformLeaveRequest);
+    async getPendingLeaves(limit = 10, offset = 0): Promise<{ requests: LeaveRequest[]; total: number }> {
+        const response = await api.get<any>(`/leaves/pending?limit=${limit}&offset=${offset}`);
+        const result = response.data.data || response.data;
+        const requests = (result.requests || []).map(transformLeaveRequest);
+        return { requests, total: result.total || 0 };
     },
 
     async approveLeave(id: number, comment?: string): Promise<void> {

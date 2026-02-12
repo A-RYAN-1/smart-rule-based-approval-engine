@@ -5,6 +5,7 @@ import (
 
 	"github.com/ankita-advitot/rule_based_approval_engine/constants"
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
+	"github.com/ankita-advitot/rule_based_approval_engine/models"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/apperrors"
 )
 
@@ -35,4 +36,12 @@ func (s *ReportService) GetDashboardSummary(ctx context.Context, role string) (m
 		"distribution": dist,
 		"type_report":  types,
 	}, nil
+}
+
+func (s *ReportService) GetRequestStatusDistribution(ctx context.Context) (map[string]int, error) {
+	return s.reportRepo.GetRequestStatusDistribution(ctx)
+}
+
+func (s *ReportService) GetRequestsByTypeReport(ctx context.Context) ([]models.RequestTypeReport, error) {
+	return s.reportRepo.GetRequestsByTypeReport(ctx)
 }

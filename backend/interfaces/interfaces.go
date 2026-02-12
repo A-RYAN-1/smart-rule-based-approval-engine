@@ -11,6 +11,13 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+type Rows interface {
+	Scan(dest ...any) error
+	Next() bool
+	Close()
+	Err() error
+}
+
 type DB interface {
 	Begin(ctx context.Context) (Tx, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
@@ -67,8 +74,8 @@ type LeaveRequestRepository interface {
 	Create(ctx context.Context, tx Tx, req *models.LeaveRequest) error
 	GetByID(ctx context.Context, tx Tx, requestID int64) (*models.LeaveRequest, error)
 	UpdateStatus(ctx context.Context, tx Tx, requestID int64, status string, approverID int64, comment string) error
-	GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error)
-	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
+	GetPendingForManager(ctx context.Context, managerID int64, limit, offset int) ([]map[string]interface{}, int, error)
+	GetPendingForAdmin(ctx context.Context, limit, offset int) ([]map[string]interface{}, int, error)
 	CheckOverlap(ctx context.Context, userID int64, fromDate, toDate time.Time) (bool, error)
 	Cancel(ctx context.Context, tx Tx, requestID int64) error
 	GetPendingRequests(ctx context.Context) ([]struct {
@@ -82,8 +89,8 @@ type ExpenseRequestRepository interface {
 	Create(ctx context.Context, tx Tx, req *models.ExpenseRequest) error
 	GetByID(ctx context.Context, tx Tx, requestID int64) (*models.ExpenseRequest, error)
 	UpdateStatus(ctx context.Context, tx Tx, requestID int64, status string, approverID int64, comment string) error
-	GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error)
-	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
+	GetPendingForManager(ctx context.Context, managerID int64, limit, offset int) ([]map[string]interface{}, int, error)
+	GetPendingForAdmin(ctx context.Context, limit, offset int) ([]map[string]interface{}, int, error)
 	Cancel(ctx context.Context, tx Tx, requestID int64) error
 	GetPendingRequests(ctx context.Context) ([]struct {
 		ID        int64
@@ -96,8 +103,8 @@ type DiscountRequestRepository interface {
 	Create(ctx context.Context, tx Tx, req *models.DiscountRequest) error
 	GetByID(ctx context.Context, tx Tx, requestID int64) (*models.DiscountRequest, error)
 	UpdateStatus(ctx context.Context, tx Tx, requestID int64, status string, approverID int64, comment string) error
-	GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error)
-	GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error)
+	GetPendingForManager(ctx context.Context, managerID int64, limit, offset int) ([]map[string]interface{}, int, error)
+	GetPendingForAdmin(ctx context.Context, limit, offset int) ([]map[string]interface{}, int, error)
 	Cancel(ctx context.Context, tx Tx, requestID int64) error
 	GetPendingRequests(ctx context.Context) ([]struct {
 		ID        int64
@@ -120,10 +127,11 @@ type HolidayRepository interface {
 
 // MyRequestsRepository handles read-only queries for a user's own requests
 type MyRequestsRepository interface {
-	GetMyLeaveRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error)
-	GetMyExpenseRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error)
-	GetMyDiscountRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error)
+	GetMyLeaveRequests(ctx context.Context, userID int64, limit, offset int) ([]map[string]interface{}, int, error)
+	GetMyExpenseRequests(ctx context.Context, userID int64, limit, offset int) ([]map[string]interface{}, int, error)
+	GetMyDiscountRequests(ctx context.Context, userID int64, limit, offset int) ([]map[string]interface{}, int, error)
 	GetMyAllRequests(ctx context.Context, userID int64, limit, offset int) (leaves []map[string]interface{}, expenses []map[string]interface{}, discounts []map[string]interface{}, total int, err error)
+	GetPendingAllRequests(ctx context.Context, role string, approverID int64, limit, offset int) (leaves []map[string]interface{}, expenses []map[string]interface{}, discounts []map[string]interface{}, total int, err error)
 }
 
 // ReportRepository handles analytical and statistical queries
@@ -136,6 +144,8 @@ type ReportRepository interface {
 type AuthService interface {
 	RegisterUser(ctx context.Context, name, email, password string) error
 	LoginUser(ctx context.Context, email, password string) (string, string, error)
+	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetUserByID(ctx context.Context, id int64) (*models.User, error)
 }
 
 type LeaveService interface {
@@ -144,7 +154,7 @@ type LeaveService interface {
 }
 
 type LeaveApprovalService interface {
-	GetPendingLeaveRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error)
+	GetPendingLeaveRequests(ctx context.Context, role string, approverID int64, limit, offset int) ([]map[string]interface{}, int, error)
 	ApproveLeave(ctx context.Context, role string, approverID, requestID int64, approvalComment string) error
 	RejectLeave(ctx context.Context, role string, approverID, requestID int64, rejectionComment string) error
 }
@@ -155,7 +165,7 @@ type ExpenseService interface {
 }
 
 type ExpenseApprovalService interface {
-	GetPendingExpenseRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error)
+	GetPendingExpenseRequests(ctx context.Context, role string, approverID int64, limit, offset int) ([]map[string]interface{}, int, error)
 	ApproveExpense(ctx context.Context, role string, approverID, requestID int64, comment string) error
 	RejectExpense(ctx context.Context, role string, approverID, requestID int64, comment string) error
 }
@@ -174,7 +184,7 @@ type DiscountService interface {
 }
 
 type DiscountApprovalService interface {
-	GetPendingRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error)
+	GetPendingRequests(ctx context.Context, role string, approverID int64, limit, offset int) ([]map[string]interface{}, int, error)
 	ApproveDiscount(ctx context.Context, role string, approverID, requestID int64, comment string) error
 	RejectDiscount(ctx context.Context, role string, approverID, requestID int64, comment string) error
 }
@@ -191,11 +201,14 @@ type HolidayService interface {
 
 type ReportService interface {
 	GetDashboardSummary(ctx context.Context, role string) (map[string]interface{}, error)
+	GetRequestStatusDistribution(ctx context.Context) (map[string]int, error)
+	GetRequestsByTypeReport(ctx context.Context) ([]models.RequestTypeReport, error)
 }
 
 type MyRequestsService interface {
-	GetMyRequests(ctx context.Context, userID int64, reqType string) ([]map[string]interface{}, error)
+	GetMyRequests(ctx context.Context, userID int64, reqType string, limit, offset int) ([]map[string]interface{}, int, error)
 	GetMyAllRequests(ctx context.Context, userID int64, limit, offset int) (map[string]interface{}, error)
+	GetPendingAllRequests(ctx context.Context, role string, userID int64, limit, offset int) (map[string]interface{}, error)
 }
 
 type AutoRejectService interface {

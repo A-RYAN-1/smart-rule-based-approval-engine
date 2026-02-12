@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLeaves } from '@/hooks/useLeaves';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useDiscounts } from '@/hooks/useDiscounts';
+import { useAdmin } from '@/hooks/useAdmin';
 import { StatusBadge, RequestTypeBadge } from '@/components/ui/status-badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,30 +36,60 @@ import { Navigate } from 'react-router-dom';
 
 export default function PendingApprovalsPage() {
   const { user } = useAuth();
-  const { pendingLeaves, approveLeave, rejectLeave } = useLeaves();
-  const { pendingExpenses, approveExpense, rejectExpense } = useExpenses();
-  const { pendingDiscounts, approveDiscount, rejectDiscount } = useDiscounts();
-
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'all' | RequestType>('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [reason, setReason] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | RequestType>('all');
+  const pageSize = 10;
+  const offset = (currentPage - 1) * pageSize;
+
+  const { usePendingAll, dashboardSummary } = useAdmin();
+
+  const { pendingLeaves, pendingTotal: leaveTotal, approveLeave, rejectLeave } = useLeaves(
+    activeTab === 'leave' ? { pendingLimit: pageSize, pendingOffset: offset } : undefined
+  );
+  const { pendingExpenses, pendingTotal: expenseTotal, approveExpense, rejectExpense } = useExpenses(
+    activeTab === 'expense' ? { pendingLimit: pageSize, pendingOffset: offset } : undefined
+  );
+  const { pendingTotal: discountTotal, pendingDiscounts, approveDiscount, rejectDiscount } = useDiscounts(
+    activeTab === 'discount' ? { pendingLimit: pageSize, pendingOffset: offset } : undefined
+  );
+
+  const pendingAllQuery = usePendingAll(pageSize, offset);
+  const pendingAllData = pendingAllQuery.data;
+
+  const { toast } = useToast();
 
   // Only managers and admins can access
   if (user?.role === 'employee') {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const pendingRequests = useMemo(() => [
-    ...pendingLeaves.map(r => ({ ...r, type: 'leave' as const })),
-    ...pendingExpenses.map(r => ({ ...r, type: 'expense' as const })),
-    ...pendingDiscounts.map(r => ({ ...r, type: 'discount' as const })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [pendingLeaves, pendingExpenses, pendingDiscounts]);
+  const filteredRequests = useMemo(() => {
+    if (activeTab === 'all') {
+      const all = [
+        ...(pendingAllData?.leaves || []).map(r => ({ ...r, type: 'leave' as const })),
+        ...(pendingAllData?.expenses || []).map(r => ({ ...r, type: 'expense' as const })),
+        ...(pendingAllData?.discounts || []).map(r => ({ ...r, type: 'discount' as const })),
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return all;
+    }
+    if (activeTab === 'leave') return pendingLeaves.map(r => ({ ...r, type: 'leave' as const }));
+    if (activeTab === 'expense') return pendingExpenses.map(r => ({ ...r, type: 'expense' as const }));
+    if (activeTab === 'discount') return pendingDiscounts.map(r => ({ ...r, type: 'discount' as const }));
+    return [];
+  }, [activeTab, pendingAllData, pendingLeaves, pendingExpenses, pendingDiscounts]);
 
-  const filteredRequests = activeTab === 'all'
-    ? pendingRequests
-    : pendingRequests.filter(r => r.type === activeTab);
+  const currentTotal = useMemo(() => {
+    if (activeTab === 'all') return pendingAllData?.total || 0;
+    if (activeTab === 'leave') return leaveTotal;
+    if (activeTab === 'expense') return expenseTotal;
+    if (activeTab === 'discount') return discountTotal;
+    return 0;
+  }, [activeTab, pendingAllData?.total, leaveTotal, expenseTotal, discountTotal]);
+
+  const totalPages = Math.ceil(currentTotal / pageSize);
 
   const handleAction = async () => {
     if (!selectedRequest || !actionType) return;
@@ -127,7 +158,7 @@ export default function PendingApprovalsPage() {
           <Card className="bg-status-pending-bg border-status-pending/20">
             <CardContent className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto mb-2 text-status-pending" />
-              <p className="text-2xl font-bold">{pendingRequests.length}</p>
+              <p className="text-2xl font-bold">{dashboardSummary?.total_pending || 0}</p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </CardContent>
           </Card>
@@ -135,7 +166,7 @@ export default function PendingApprovalsPage() {
             <CardContent className="p-4 text-center">
               <Calendar className="h-6 w-6 mx-auto mb-2 text-leave" />
               <p className="text-2xl font-bold">
-                {pendingRequests.filter(r => r.type === 'leave').length}
+                {dashboardSummary?.distribution?.pending?.leave || 0}
               </p>
               <p className="text-sm text-muted-foreground">Leave</p>
             </CardContent>
@@ -144,7 +175,7 @@ export default function PendingApprovalsPage() {
             <CardContent className="p-4 text-center">
               <DollarSign className="h-6 w-6 mx-auto mb-2 text-expense" />
               <p className="text-2xl font-bold">
-                {pendingRequests.filter(r => r.type === 'expense').length}
+                {dashboardSummary?.distribution?.pending?.expense || 0}
               </p>
               <p className="text-sm text-muted-foreground">Expense</p>
             </CardContent>
@@ -153,7 +184,7 @@ export default function PendingApprovalsPage() {
             <CardContent className="p-4 text-center">
               <Percent className="h-6 w-6 mx-auto mb-2 text-discount" />
               <p className="text-2xl font-bold">
-                {pendingRequests.filter(r => r.type === 'discount').length}
+                {dashboardSummary?.distribution?.pending?.discount || 0}
               </p>
               <p className="text-sm text-muted-foreground">Discount</p>
             </CardContent>
@@ -168,7 +199,10 @@ export default function PendingApprovalsPage() {
                 <CardTitle>Requests Awaiting Review</CardTitle>
                 <CardDescription>Click on a request to view details and take action</CardDescription>
               </div>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+              <Tabs value={activeTab} onValueChange={(v) => {
+                setActiveTab(v as any);
+                setCurrentPage(1);
+              }}>
                 <TabsList>
                   <TabsTrigger value="all">All</TabsTrigger>
                   <TabsTrigger value="leave">Leave</TabsTrigger>
@@ -257,6 +291,36 @@ export default function PendingApprovalsPage() {
                 )}
               </TableBody>
             </Table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-2 py-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Showing {offset + 1} to {Math.min(offset + pageSize, currentTotal)} of {currentTotal} results
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center justify-center min-w-[32px] text-sm font-medium">
+                    {currentPage} / {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

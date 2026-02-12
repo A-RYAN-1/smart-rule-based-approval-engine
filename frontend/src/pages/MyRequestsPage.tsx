@@ -4,6 +4,9 @@ import { cn } from '@/lib/utils';
 import { useLeaves } from '@/hooks/useLeaves';
 import { useExpenses } from '@/hooks/useExpenses';
 import { useDiscounts } from '@/hooks/useDiscounts';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAdmin } from '@/hooks/useAdmin';
+import { Navigate } from 'react-router-dom';
 import { StatusBadge, RequestTypeBadge } from '@/components/ui/status-badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,14 +43,30 @@ import { Eye, X, Calendar, DollarSign, Percent, Info } from 'lucide-react';
 import { RequestType, RequestStatus } from '@/types';
 
 export default function MyRequestsPage() {
-  const { myLeaves, cancelLeave } = useLeaves();
-  const { myExpenses, cancelExpense } = useExpenses();
-  const { myDiscounts, cancelDiscount } = useDiscounts();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'all' | RequestType>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  const { useMyAll } = useAdmin();
+
+  const { myLeaves, myTotal: leaveTotal, cancelLeave } = useLeaves(
+    activeTab === 'leave' || activeTab === 'all' ? { myLimit: ITEMS_PER_PAGE, myOffset: offset } : undefined
+  );
+  const { myExpenses, myTotal: expenseTotal, cancelExpense } = useExpenses(
+    activeTab === 'expense' || activeTab === 'all' ? { myLimit: ITEMS_PER_PAGE, myOffset: offset } : undefined
+  );
+  const { myDiscounts, myTotal: discountTotal, cancelDiscount } = useDiscounts(
+    activeTab === 'discount' || activeTab === 'all' ? { myLimit: ITEMS_PER_PAGE, myOffset: offset } : undefined
+  );
+
+  const myAllQuery = useMyAll(ITEMS_PER_PAGE, offset);
+  const myAllData = myAllQuery.data;
 
   const { toast } = useToast();
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'all' | RequestType>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | RequestStatus>('all');
 
   const [confirmCancel, setConfirmCancel] = useState<{
     type: RequestType;
@@ -55,16 +74,23 @@ export default function MyRequestsPage() {
   } | null>(null);
 
 
-  const allRequests = useMemo(() => [
-    ...myLeaves.map(r => ({ ...r, type: 'leave' as const })),
-    ...myExpenses.map(r => ({ ...r, type: 'expense' as const })),
-    ...myDiscounts.map(r => ({ ...r, type: 'discount' as const })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [myLeaves, myExpenses, myDiscounts]);
-
   const filteredRequests = useMemo(() => {
-    return allRequests.filter(r => {
-      const typeMatch = activeTab === 'all' || r.type === activeTab;
-      
+    let baseRequests: any[] = [];
+    if (activeTab === 'all') {
+      baseRequests = [
+        ...(myAllData?.leaves || []).map(r => ({ ...r, type: 'leave' as const })),
+        ...(myAllData?.expenses || []).map(r => ({ ...r, type: 'expense' as const })),
+        ...(myAllData?.discounts || []).map(r => ({ ...r, type: 'discount' as const })),
+      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (activeTab === 'leave') {
+      baseRequests = myLeaves.map(r => ({ ...r, type: 'leave' as const }));
+    } else if (activeTab === 'expense') {
+      baseRequests = myExpenses.map(r => ({ ...r, type: 'expense' as const }));
+    } else if (activeTab === 'discount') {
+      baseRequests = myDiscounts.map(r => ({ ...r, type: 'discount' as const }));
+    }
+
+    return baseRequests.filter(r => {
       // Group auto_approved with approved, auto_rejected with rejected
       let statusMatch = false;
       if (statusFilter === 'all') {
@@ -76,19 +102,16 @@ export default function MyRequestsPage() {
       } else {
         statusMatch = r.status === statusFilter;
       }
-      
-      return typeMatch && statusMatch;
+
+      return statusMatch;
     });
-  }, [allRequests, activeTab, statusFilter]);
+  }, [myAllData, myLeaves, myExpenses, myDiscounts, activeTab, statusFilter]);
 
   const handleCancel = async (type: RequestType, id: number) => {
     try {
       if (type === 'leave') await cancelLeave(id);
       else if (type === 'expense') await cancelExpense(id);
       else if (type === 'discount') await cancelDiscount(id);
-
-      // Toast assumes hook handles success toast, but we can double up or rely on hook.
-      // Hook has toast.success.
       setSelectedRequest(null);
     } catch (error) {
       console.error(error);
@@ -113,22 +136,18 @@ export default function MyRequestsPage() {
     }
   };
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 8;
+  const currentTotal = useMemo(() => {
+    if (activeTab === 'all') return myAllData?.total || 0;
+    if (activeTab === 'leave') return leaveTotal;
+    if (activeTab === 'expense') return expenseTotal;
+    if (activeTab === 'discount') return discountTotal;
+    return 0;
+  }, [activeTab, myAllData?.total, leaveTotal, expenseTotal, discountTotal]);
 
-  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
-  const paginatedRequests = filteredRequests.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const totalPages = Math.ceil(currentTotal / ITEMS_PER_PAGE);
+  const paginatedRequests = filteredRequests; // Already paginated from hooks
 
-  // Reset page when tab changes
-  //   const handleTabChange = (v: string) => {
-  //       setActiveTab(v as any);
-  //       setCurrentPage(1);
-  //   }
-  // The above handling can be done in the onValueChange directly
+  const { user: authUser } = useAuth(); // for usage if needed
 
   return (
     <AppLayout>
@@ -142,40 +161,40 @@ export default function MyRequestsPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold">{allRequests.length}</p>
-              <p className="text-sm text-muted-foreground">Total</p>
+              <p className="text-2xl font-bold">{leaveTotal + expenseTotal + discountTotal}</p>
+              <p className="text-sm text-muted-foreground">Total Requests</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-status-pending">
-                {allRequests.filter(r => r.status === 'pending').length}
+                {leaveTotal + expenseTotal + discountTotal}
               </p>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-sm text-muted-foreground">Managed by API Pagination</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-status-approved">
-                {allRequests.filter(r => r.status === 'approved' || r.status === 'auto_approved').length}
+                {leaveTotal}
               </p>
-              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-sm text-muted-foreground">Leaves</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-status-rejected">
-                {allRequests.filter(r => r.status === 'rejected' || r.status === 'auto_rejected').length}
+                {expenseTotal}
               </p>
-              <p className="text-sm text-muted-foreground">Rejected</p>
+              <p className="text-sm text-muted-foreground">Expenses</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-muted-foreground">
-                {allRequests.filter(r => r.status === 'cancelled').length}
+                {discountTotal}
               </p>
-              <p className="text-sm text-muted-foreground">Cancelled</p>
+              <p className="text-sm text-muted-foreground">Discounts</p>
             </CardContent>
           </Card>
         </div>

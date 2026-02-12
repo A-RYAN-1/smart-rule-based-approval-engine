@@ -123,14 +123,30 @@ func (h *ExpenseApprovalHandler) GetPendingExpenses(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt64("user_id")
 
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
 	ctx := c.Request.Context()
-	expenses, err := h.expenseApprovalService.GetPendingExpenseRequests(ctx, role, userID)
+	expenses, total, err := h.expenseApprovalService.GetPendingExpenseRequests(ctx, role, userID, limit, offset)
 	if err != nil {
 		handleExpenseApprovalError(c, err)
 		return
 	}
 
-	response.Success(c, "pending expense requests fetched successfully", expenses)
+	response.Success(c, "pending expense requests fetched successfully", gin.H{
+		"requests": expenses,
+		"total":    total,
+	})
 }
 
 func (h *ExpenseApprovalHandler) ApproveExpense(c *gin.Context) {

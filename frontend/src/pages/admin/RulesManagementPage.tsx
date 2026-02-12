@@ -103,11 +103,21 @@ export default function RulesManagementPage() {
       }
 
       if (isAddMode) {
-        await addRule({
-          ...newRule,
-          isActive: true,
-        });
+        // Add mode is disabled in reduced scope, but keeping logic for safety or returning error
+        toast.error('Rule creation is disabled. Use Edit.');
+        return;
       } else {
+        // Basic frontend validation for negative values
+        if (typeof newRule.condition === 'object') {
+          for (const key in newRule.condition) {
+            const val = newRule.condition[key];
+            if (typeof val === 'number' && val < 0) {
+              toast.error(`${key} cannot be negative`);
+              return;
+            }
+          }
+        }
+
         await updateRule({
           id: editingRuleId!,
           rule: newRule,
@@ -194,15 +204,7 @@ export default function RulesManagementPage() {
             <p className="text-muted-foreground mt-1">Configure automatic approval rules</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={() => {
-              setIsAddMode(true);
-              setEditingRuleId(null);
-              resetForm();
-              setIsAddDialogOpen(true);
-            }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Rule
-            </Button>
+            {/* Add Rule button removed as per reduced scope */}
           </div>
         </div>
 
@@ -402,10 +404,6 @@ export default function RulesManagementPage() {
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
                     <SelectItem value="AUTO_APPROVE">Auto Approve</SelectItem>
-                    <SelectItem value="AUTO_REJECT">Auto Reject</SelectItem>
-                    <SelectItem value="ASSIGN_APPROVER">
-                      Assign Approver
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

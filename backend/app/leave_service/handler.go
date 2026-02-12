@@ -132,14 +132,30 @@ func (h *LeaveApprovalHandler) GetPendingLeaves(c *gin.Context) {
 	role := c.GetString("role")
 	userID := c.GetInt64("user_id")
 
+	limitStr := c.DefaultQuery("limit", "10")
+	offsetStr := c.DefaultQuery("offset", "0")
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		limit = 10
+	}
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		offset = 0
+	}
+
 	ctx := c.Request.Context()
-	leaves, err := h.leaveApprovalService.GetPendingLeaveRequests(ctx, role, userID)
+	leaves, total, err := h.leaveApprovalService.GetPendingLeaveRequests(ctx, role, userID, limit, offset)
 	if err != nil {
 		handleApprovalError(c, err)
 		return
 	}
 
-	response.Success(c, "pending leave requests fetched successfully", leaves)
+	response.Success(c, "pending leave requests fetched successfully", gin.H{
+		"requests": leaves,
+		"total":    total,
+	})
 }
 
 func (h *LeaveApprovalHandler) ApproveLeave(c *gin.Context) {

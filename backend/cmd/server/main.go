@@ -47,11 +47,12 @@ func main() {
 	discountRepo := repositories.NewDiscountRequestRepository(ctx, database.DB)
 	holidayRepo := repositories.NewHolidayRepository(ctx, database.DB)
 	reportRepo := repositories.NewReportRepository(ctx, database.DB)
+	gradeRepo := repositories.NewGradeRepository(ctx, database.DB)
 	myRequestsRepo := repositories.NewAggregatedRepository(ctx, database.DB)
 
 	// 2. Services
 	authService := auth.NewAuthService(ctx, userRepo, balanceRepo, database.DB)
-	ruleService := rules.NewRuleService(ctx, ruleRepo)
+	ruleService := rules.NewRuleService(ctx, ruleRepo, gradeRepo, database.DB)
 	leaveService := leave_service.NewLeaveService(
 		ctx, leaveRepo, balanceRepo, ruleService, userRepo, database.DB,
 	)

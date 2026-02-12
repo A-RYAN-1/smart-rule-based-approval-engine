@@ -3,19 +3,20 @@ import { discountService } from '@/services/discount.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export function useDiscounts() {
+export function useDiscounts(params?: { myLimit?: number; myOffset?: number; pendingLimit?: number; pendingOffset?: number }) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'admin';
 
     const myDiscountsQuery = useQuery({
-        queryKey: ['discounts', 'my'],
-        queryFn: discountService.getMyDiscounts,
+        queryKey: ['discounts', 'my', params?.myLimit, params?.myOffset],
+        queryFn: () => discountService.getMyDiscounts(params?.myLimit || 10, params?.myOffset || 0),
+        enabled: !!user && user.role !== 'admin',
     });
 
     const pendingDiscountsQuery = useQuery({
-        queryKey: ['discounts', 'pending'],
-        queryFn: discountService.getPendingDiscounts,
+        queryKey: ['discounts', 'pending', params?.pendingLimit, params?.pendingOffset],
+        queryFn: () => discountService.getPendingDiscounts(params?.pendingLimit || 10, params?.pendingOffset || 0),
         enabled: isManagerOrAdmin,
         retry: false,
     });
@@ -59,9 +60,11 @@ export function useDiscounts() {
     });
 
     return {
-        myDiscounts: myDiscountsQuery.data || [],
+        myDiscounts: myDiscountsQuery.data?.requests || [],
+        myTotal: myDiscountsQuery.data?.total || 0,
         isLoadingMyDiscounts: myDiscountsQuery.isLoading,
-        pendingDiscounts: pendingDiscountsQuery.data || [],
+        pendingDiscounts: pendingDiscountsQuery.data?.requests || [],
+        pendingTotal: pendingDiscountsQuery.data?.total || 0,
         isLoadingPendingDiscounts: pendingDiscountsQuery.isLoading,
         requestDiscount: requestDiscountMutation.mutateAsync,
         cancelDiscount: cancelDiscountMutation.mutateAsync,

@@ -73,6 +73,8 @@ var (
 	ErrInvalidUser      = errors.New("invalid user")
 	ErrInvalidDateRange = errors.New("from date cannot be after to date")
 	ErrPastDate         = errors.New("leave dates cannot be in the past")
+	ErrNegativeValue    = errors.New("value must be positive")
+	ErrQuotaExceeded     = errors.New("value exceeds allowed quota")
 )
 
 // --- Database errors ---

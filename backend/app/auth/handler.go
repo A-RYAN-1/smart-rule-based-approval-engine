@@ -62,14 +62,46 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		true,
 	)
 
+	// Fetch user details to return in response
+	user, err := h.authService.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		// Fallback if user fetch fails, though login succeeded
+		response.Success(
+			c,
+			"login successful",
+			gin.H{
+				"token": token,
+				"role":  role,
+			},
+		)
+		return
+	}
+
 	response.Success(
 		c,
 		"login successful",
 		gin.H{
 			"token": token,
-			"role":  role,
+			"user":  user,
 		},
 	)
+}
+
+func (h *AuthHandler) GetMe(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		handleAuthError(c, apperrors.ErrUnauthorized, nil)
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := h.authService.GetUserByID(ctx, userID)
+	if err != nil {
+		handleAuthError(c, err, nil)
+		return
+	}
+
+	response.Success(c, "user details fetched successfully", user)
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {

@@ -35,6 +35,40 @@ func (h *ReportHandler) GetDashboardSummary(c *gin.Context) {
 	)
 }
 
+func (h *ReportHandler) GetRequestStatusDistribution(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "ADMIN" {
+		handleReportError(c, apperrors.ErrAdminOnly)
+		return
+	}
+
+	ctx := c.Request.Context()
+	data, err := h.reportService.GetRequestStatusDistribution(ctx)
+	if err != nil {
+		handleReportError(c, err)
+		return
+	}
+
+	response.Success(c, "status distribution fetched", data)
+}
+
+func (h *ReportHandler) GetRequestsByType(c *gin.Context) {
+	role := c.GetString("role")
+	if role != "ADMIN" {
+		handleReportError(c, apperrors.ErrAdminOnly)
+		return
+	}
+
+	ctx := c.Request.Context()
+	data, err := h.reportService.GetRequestsByTypeReport(ctx)
+	if err != nil {
+		handleReportError(c, err)
+		return
+	}
+
+	response.Success(c, "requests by type fetched", data)
+}
+
 func handleReportError(c *gin.Context, err error) {
 	status := http.StatusInternalServerError
 

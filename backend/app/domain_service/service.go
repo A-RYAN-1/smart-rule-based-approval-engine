@@ -171,13 +171,13 @@ func NewDiscountApprovalService(
 	}
 }
 
-func (s *DiscountApprovalService) GetPendingRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error) {
+func (s *DiscountApprovalService) GetPendingRequests(ctx context.Context, role string, approverID int64, limit, offset int) ([]map[string]interface{}, int, error) {
 	if role == constants.RoleManager {
-		return s.discountReqRepo.GetPendingForManager(ctx, approverID)
+		return s.discountReqRepo.GetPendingForManager(ctx, approverID, limit, offset)
 	} else if role == constants.RoleAdmin {
-		return s.discountReqRepo.GetPendingForAdmin(ctx)
+		return s.discountReqRepo.GetPendingForAdmin(ctx, limit, offset)
 	} else {
-		return nil, apperrors.ErrUnauthorized
+		return nil, 0, apperrors.ErrUnauthorized
 	}
 }
 

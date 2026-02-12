@@ -8,12 +8,6 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 5173,
     proxy: {
-      "/api/auth": {
-        target: "http://localhost:8080",
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
       "/api": {
         target: "http://localhost:8080",
         changeOrigin: true,

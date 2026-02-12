@@ -10,10 +10,17 @@ export function useAdmin() {
     const isApprover = user?.role === 'admin' || user?.role === 'manager';
     const isAdmin = user?.role === 'admin';
 
+    // Dashboard Summary
+    const dashboardSummaryQuery = useQuery({
+        queryKey: ['dashboard-summary'],
+        queryFn: adminService.getDashboardSummary,
+        enabled: isAdmin,
+    });
+
     // Holidays
     const holidaysQuery = useQuery({
         queryKey: ['holidays'],
-        queryFn: adminService.getHolidays,
+        queryFn: ({ queryKey }) => adminService.getHolidays(10, 0), // Default for now
         enabled: isApprover,
     });
 
@@ -38,7 +45,7 @@ export function useAdmin() {
     // Rules
     const rulesQuery = useQuery({
         queryKey: ['admin-rules'],
-        queryFn: adminService.getRules,
+        queryFn: ({ queryKey }) => adminService.getRules(20, 0), // Default higher limit for rules
         enabled: isApprover,
     });
 
@@ -76,17 +83,17 @@ export function useAdmin() {
         });
     };
 
-    // Reports
+    // Reports - Keep for detail pages, but dashboard uses summary
     const statusDistributionQuery = useQuery({
         queryKey: ['report-status'],
         queryFn: adminService.getStatusDistribution,
-        enabled: isApprover,
+        enabled: isApprover && !isAdmin, // Only if not admin, or if specific report page needs it
     });
 
     const requestsByTypeQuery = useQuery({
         queryKey: ['report-type'],
         queryFn: adminService.getRequestsByType,
-        enabled: isApprover,
+        enabled: isApprover && !isAdmin,
     });
 
     const runAutoRejectMutation = useMutation({
@@ -95,11 +102,32 @@ export function useAdmin() {
             toast.success('Auto-reject system process triggered');
             queryClient.invalidateQueries({ queryKey: ['admin-rules'] });
             queryClient.invalidateQueries({ queryKey: ['report-status'] });
+            queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
         },
         onError: () => toast.error('Failed to trigger auto-reject process')
     });
 
+    const usePendingAll = (limit: number, offset: number) => {
+        return useQuery({
+            queryKey: ['pending-all', limit, offset],
+            queryFn: () => adminService.getPendingAllRequests(limit, offset),
+            enabled: isApprover,
+        });
+    };
+
+    const useMyAll = (limit: number, offset: number) => {
+        return useQuery({
+            queryKey: ['my-all', limit, offset],
+            queryFn: () => adminService.getMyAllRequests(limit, offset),
+            enabled: !!user,
+        });
+    };
+
     return {
+        // Dashboard
+        dashboardSummary: dashboardSummaryQuery.data,
+        isLoadingDashboard: dashboardSummaryQuery.isLoading,
+
         // Holidays
         holidays: holidaysQuery.data || [],
         isLoadingHolidays: holidaysQuery.isLoading,
@@ -114,14 +142,18 @@ export function useAdmin() {
         deleteRule: deleteRuleMutation.mutateAsync,
         toggleRule: toggleRuleActive,
 
-        // Reports
-        statusDistribution: statusDistributionQuery.data,
-        isLoadingStatusDistribution: statusDistributionQuery.isLoading,
-        requestsByType: requestsByTypeQuery.data || [],
-        isLoadingRequestsByType: requestsByTypeQuery.isLoading,
+        // Reports (Legacy/Detailed)
+        statusDistribution: dashboardSummaryQuery.data?.distribution || statusDistributionQuery.data,
+        isLoadingStatusDistribution: dashboardSummaryQuery.isLoading || statusDistributionQuery.isLoading,
+        requestsByType: dashboardSummaryQuery.data?.type_report || requestsByTypeQuery.data || [],
+        isLoadingRequestsByType: dashboardSummaryQuery.isLoading || requestsByTypeQuery.isLoading,
 
         // System
         runAutoReject: runAutoRejectMutation.mutateAsync,
         isRunningAutoReject: runAutoRejectMutation.isPending,
+
+        // Unified Pending
+        usePendingAll,
+        useMyAll,
     };
 }

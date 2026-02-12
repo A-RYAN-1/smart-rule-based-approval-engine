@@ -205,14 +205,14 @@ func NewLeaveApprovalService(
 }
 
 // retrieves pending leave requests based on role
-func (s *LeaveApprovalService) GetPendingLeaveRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error) {
+func (s *LeaveApprovalService) GetPendingLeaveRequests(ctx context.Context, role string, approverID int64, limit, offset int) ([]map[string]interface{}, int, error) {
 	switch role {
 	case constants.RoleManager:
-		return s.leaveReqRepo.GetPendingForManager(ctx, approverID)
+		return s.leaveReqRepo.GetPendingForManager(ctx, approverID, limit, offset)
 	case constants.RoleAdmin:
-		return s.leaveReqRepo.GetPendingForAdmin(ctx)
+		return s.leaveReqRepo.GetPendingForAdmin(ctx, limit, offset)
 	default:
-		return nil, apperrors.ErrUnauthorizedRole
+		return nil, 0, apperrors.ErrUnauthorizedRole
 	}
 }
 

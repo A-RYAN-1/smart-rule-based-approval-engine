@@ -3,19 +3,20 @@ import { leaveService } from '@/services/leave.service';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-export function useLeaves() {
+export function useLeaves(params?: { myLimit?: number; myOffset?: number; pendingLimit?: number; pendingOffset?: number }) {
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'admin';
 
     const myLeavesQuery = useQuery({
-        queryKey: ['leaves', 'my'],
-        queryFn: leaveService.getMyLeaves,
+        queryKey: ['leaves', 'my', params?.myLimit, params?.myOffset],
+        queryFn: () => leaveService.getMyLeaves(params?.myLimit || 10, params?.myOffset || 0),
+        enabled: !!user && user.role !== 'admin',
     });
 
     const pendingLeavesQuery = useQuery({
-        queryKey: ['leaves', 'pending'],
-        queryFn: leaveService.getPendingLeaves,
+        queryKey: ['leaves', 'pending', params?.pendingLimit, params?.pendingOffset],
+        queryFn: () => leaveService.getPendingLeaves(params?.pendingLimit || 10, params?.pendingOffset || 0),
         // Only fetch if we are manager/admin
         enabled: isManagerOrAdmin,
         retry: false,
@@ -24,6 +25,7 @@ export function useLeaves() {
     const balancesQuery = useQuery({
         queryKey: ['balances'],
         queryFn: leaveService.getBalances,
+        enabled: !!user && user.role !== 'admin',
     });
 
     const requestLeaveMutation = useMutation({
@@ -77,9 +79,11 @@ export function useLeaves() {
     });
 
     return {
-        myLeaves: myLeavesQuery.data || [],
+        myLeaves: myLeavesQuery.data?.requests || [],
+        myTotal: myLeavesQuery.data?.total || 0,
         isLoadingMyLeaves: myLeavesQuery.isLoading,
-        pendingLeaves: pendingLeavesQuery.data || [],
+        pendingLeaves: pendingLeavesQuery.data?.requests || [],
+        pendingTotal: pendingLeavesQuery.data?.total || 0,
         isLoadingPendingLeaves: pendingLeavesQuery.isLoading,
         balances: balancesQuery.data || [],
         requestLeave: requestLeaveMutation.mutateAsync,

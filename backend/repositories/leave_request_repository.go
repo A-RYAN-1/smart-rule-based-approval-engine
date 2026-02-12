@@ -29,11 +29,15 @@ const (
 		 FROM leave_requests lr
 		 JOIN users u ON lr.employee_id = u.id
 		 WHERE lr.status='PENDING'
-		   AND u.manager_id=$1`
+		   AND u.manager_id=$1
+		 ORDER BY lr.created_at DESC
+		 LIMIT $2 OFFSET $3`
 	leaveQueryGetPendingForAdmin = `SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at
 		 FROM leave_requests lr
 		 JOIN users u ON lr.employee_id = u.id
-		 WHERE lr.status='PENDING'`
+		 WHERE lr.status='PENDING'
+		 ORDER BY lr.created_at DESC
+		 LIMIT $1 OFFSET $2`
 	leaveQueryCheckOverlap = `SELECT 1
 		 FROM leave_requests
 		 WHERE employee_id = $1
@@ -43,6 +47,8 @@ const (
 		 LIMIT 1`
 	leaveQueryCancel             = `UPDATE leave_requests SET status='CANCELLED' WHERE id=$1`
 	leaveQueryGetPendingRequests = "SELECT id, created_at FROM leave_requests WHERE status='PENDING'"
+	leaveQueryCountPendingForManager = `SELECT COUNT(*) FROM leave_requests lr JOIN users u ON lr.employee_id = u.id WHERE lr.status='PENDING' AND u.manager_id=$1`
+	leaveQueryCountPendingForAdmin   = `SELECT COUNT(*) FROM leave_requests WHERE status='PENDING'`
 )
 
 type leaveRequestRepository struct {
@@ -99,14 +105,20 @@ func (r *leaveRequestRepository) UpdateStatus(ctx context.Context, tx interfaces
 	return utils.MapPgError(err)
 }
 
-func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error) {
+func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, managerID int64, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, leaveQueryCountPendingForManager, managerID).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
 		leaveQueryGetPendingForManager,
-		managerID,
+		managerID, limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -118,7 +130,7 @@ func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, manag
 		var fromDate, toDate, createdAt time.Time
 
 		if err := rows.Scan(&id, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
@@ -132,16 +144,23 @@ func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, manag
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
-func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error) {
+func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context, limit, offset int) ([]map[string]interface{}, int, error) {
+	var total int
+	err := r.db.QueryRow(ctx, leaveQueryCountPendingForAdmin).Scan(&total)
+	if err != nil {
+		return nil, 0, utils.MapPgError(err)
+	}
+
 	rows, err := r.db.Query(
 		ctx,
 		leaveQueryGetPendingForAdmin,
+		limit, offset,
 	)
 	if err != nil {
-		return nil, utils.MapPgError(err)
+		return nil, total, utils.MapPgError(err)
 	}
 	defer rows.Close()
 
@@ -153,7 +172,7 @@ func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context) ([]map[
 		var fromDate, toDate, createdAt time.Time
 
 		if err := rows.Scan(&id, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
-			return nil, utils.MapPgError(err)
+			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
@@ -167,7 +186,7 @@ func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context) ([]map[
 		})
 	}
 
-	return result, nil
+	return result, total, nil
 }
 
 func (r *leaveRequestRepository) CheckOverlap(ctx context.Context, userID int64, fromDate, toDate time.Time) (bool, error) {

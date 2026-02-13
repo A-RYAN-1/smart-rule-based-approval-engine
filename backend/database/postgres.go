@@ -65,7 +65,7 @@ func (t *pgxTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.Comma
 
 func Connect(cfg *config.Config) {
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s&connect_timeout=10&application_name=approval-engine",
 		cfg.DB.User,
 		cfg.DB.Password,
 		cfg.DB.Host,

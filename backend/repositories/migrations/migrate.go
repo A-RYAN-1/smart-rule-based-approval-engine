@@ -64,12 +64,12 @@ func HandleMigrateCommand() {
 		createMigration()
 	case "up":
 		log.Println("calling to run")
-		runMigrationsUp()
+		RunMigrationsUp()
 	default:
 		log.Println("unknown migrate command")
 	}
 }
-func runMigrationsUp() {
+func RunMigrationsUp() {
 	if database.DB == nil {
 		log.Fatal("Database connection not initialized")
 	}

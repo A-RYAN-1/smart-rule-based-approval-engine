@@ -31,6 +31,10 @@ func main() {
 	cfg := config.Load()
 	database.Connect(cfg)
 
+	// Auto-run migrations on startup
+	log.Println("Running database migrations...")
+	migrations.RunMigrationsUp()
+
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		migrations.HandleMigrateCommand()
 		return

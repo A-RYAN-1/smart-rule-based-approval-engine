@@ -47,6 +47,15 @@ func Register(
 	discountHandler := domain_service.NewDiscountHandler(ctx, discountService)
 	discountApprovalHandler := domain_service.NewDiscountApprovalHandler(ctx, discountApprovalService)
 
+	// Health check endpoint (root level, no auth required)
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":    "healthy",
+			"timestamp": gin.H{"time": ""},
+			"service":   "approval-engine",
+		})
+	})
+
 	// Public routes
 	public := router.Group("/api")
 	{

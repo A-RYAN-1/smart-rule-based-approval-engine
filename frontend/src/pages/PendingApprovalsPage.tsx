@@ -61,10 +61,33 @@ export default function PendingApprovalsPage() {
 
   const { toast } = useToast();
 
+  // Debug logging
+  console.log('[PendingApprovalsPage] pendingAllData:', pendingAllData);
+  console.log('[PendingApprovalsPage] dashboardSummary:', dashboardSummary);
+
   // Only managers and admins can access
   if (user?.role === 'employee') {
     return <Navigate to="/dashboard" replace />;
   }
+
+  // Calculate pending counts from the fetched data
+  // For admins: use dashboardSummary if available
+  // For managers: calculate from pendingAllData
+  const pendingLeaveCount = user?.role === 'admin' 
+    ? dashboardSummary?.distribution?.pending?.leave || 0
+    : (pendingAllData?.leaves || []).length;
+  
+  const pendingExpenseCount = user?.role === 'admin'
+    ? dashboardSummary?.distribution?.pending?.expense || 0
+    : (pendingAllData?.expenses || []).length;
+  
+  const pendingDiscountCount = user?.role === 'admin'
+    ? dashboardSummary?.distribution?.pending?.discount || 0
+    : (pendingAllData?.discounts || []).length;
+  
+  const totalPending = user?.role === 'admin'
+    ? dashboardSummary?.total_pending || 0
+    : (pendingLeaveCount + pendingExpenseCount + pendingDiscountCount);
 
   const filteredRequests = useMemo(() => {
     if (activeTab === 'all') {
@@ -72,7 +95,11 @@ export default function PendingApprovalsPage() {
         ...(pendingAllData?.leaves || []).map(r => ({ ...r, type: 'leave' as const })),
         ...(pendingAllData?.expenses || []).map(r => ({ ...r, type: 'expense' as const })),
         ...(pendingAllData?.discounts || []).map(r => ({ ...r, type: 'discount' as const })),
-      ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      ].sort((a, b) => {
+        const aDate = new Date(b.createdAt || 0).getTime();
+        const bDate = new Date(a.createdAt || 0).getTime();
+        return aDate - bDate;
+      });
       return all;
     }
     if (activeTab === 'leave') return pendingLeaves.map(r => ({ ...r, type: 'leave' as const }));
@@ -158,7 +185,7 @@ export default function PendingApprovalsPage() {
           <Card className="bg-status-pending-bg border-status-pending/20">
             <CardContent className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto mb-2 text-status-pending" />
-              <p className="text-2xl font-bold">{dashboardSummary?.total_pending || 0}</p>
+              <p className="text-2xl font-bold">{totalPending}</p>
               <p className="text-sm text-muted-foreground">Pending</p>
             </CardContent>
           </Card>
@@ -166,7 +193,7 @@ export default function PendingApprovalsPage() {
             <CardContent className="p-4 text-center">
               <Calendar className="h-6 w-6 mx-auto mb-2 text-leave" />
               <p className="text-2xl font-bold">
-                {dashboardSummary?.distribution?.pending?.leave || 0}
+                {pendingLeaveCount}
               </p>
               <p className="text-sm text-muted-foreground">Leave</p>
             </CardContent>
@@ -175,7 +202,7 @@ export default function PendingApprovalsPage() {
             <CardContent className="p-4 text-center">
               <DollarSign className="h-6 w-6 mx-auto mb-2 text-expense" />
               <p className="text-2xl font-bold">
-                {dashboardSummary?.distribution?.pending?.expense || 0}
+                {pendingExpenseCount}
               </p>
               <p className="text-sm text-muted-foreground">Expense</p>
             </CardContent>
@@ -184,7 +211,7 @@ export default function PendingApprovalsPage() {
             <CardContent className="p-4 text-center">
               <Percent className="h-6 w-6 mx-auto mb-2 text-discount" />
               <p className="text-2xl font-bold">
-                {dashboardSummary?.distribution?.pending?.discount || 0}
+                {pendingDiscountCount}
               </p>
               <p className="text-sm text-muted-foreground">Discount</p>
             </CardContent>
@@ -296,7 +323,7 @@ export default function PendingApprovalsPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-2 py-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  Showing {offset + 1} to {Math.min(offset + pageSize, currentTotal)} of {currentTotal} results
+                  Showing {currentTotal === 0 ? 0 : offset + 1} to {currentTotal === 0 ? 0 : Math.min(offset + pageSize, currentTotal)} of {currentTotal} results
                 </p>
                 <div className="flex items-center space-x-2">
                   <Button

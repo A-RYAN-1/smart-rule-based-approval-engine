@@ -123,9 +123,12 @@ export default function Dashboard() {
     }
 
     // Managers & Employees see THEIR OWN requests in top cards
+    // But Managers see THEIR TEAM's pending count for approval
+    const pendingForApproval = isManager ? pendingCount : personalAll.filter(r => r.status === 'pending').length;
+    
     return {
       totalRequests: personalAll.length,
-      pendingRequests: personalAll.filter(r => r.status === 'pending').length,
+      pendingRequests: pendingForApproval,
       approvedRequests: personalAll.filter(r => r.status === 'approved' || r.status === 'auto_approved').length,
       rejectedRequests: personalAll.filter(r => r.status === 'rejected' || r.status === 'auto_rejected').length,
       cancelledRequests: personalAll.filter(r => r.status === 'cancelled').length,

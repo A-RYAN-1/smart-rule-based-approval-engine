@@ -22,7 +22,7 @@ const (
 		 SET status=$1, approved_by_id=$2, approval_comment=$3
 		 WHERE id=$4`
 	discountQueryGetPendingForManager = `
-		SELECT dr.id, u.name, dr.discount_percentage, dr.reason, dr.created_at
+		SELECT dr.id, dr.employee_id, u.name, dr.discount_percentage, dr.reason, dr.created_at
 		FROM discount_requests dr
 		JOIN users u ON dr.employee_id = u.id
 		WHERE dr.status='PENDING' AND u.manager_id=$1
@@ -30,15 +30,15 @@ const (
 		LIMIT $2 OFFSET $3
 	`
 	discountQueryGetPendingForAdmin = `
-		SELECT dr.id, u.name, dr.discount_percentage, dr.reason, dr.created_at
+		SELECT dr.id, dr.employee_id, u.name, dr.discount_percentage, dr.reason, dr.created_at
 		FROM discount_requests dr
 		JOIN users u ON dr.employee_id = u.id
 		WHERE dr.status='PENDING'
 		ORDER BY dr.created_at DESC
 		LIMIT $1 OFFSET $2
 	`
-	discountQueryCancel             = `UPDATE discount_requests SET status='CANCELLED' WHERE id=$1`
-	discountQueryGetPendingRequests = "SELECT id, created_at FROM discount_requests WHERE status='PENDING'"
+	discountQueryCancel                 = `UPDATE discount_requests SET status='CANCELLED' WHERE id=$1`
+	discountQueryGetPendingRequests     = "SELECT id, created_at FROM discount_requests WHERE status='PENDING'"
 	discountQueryCountPendingForManager = `SELECT COUNT(*) FROM discount_requests dr JOIN users u ON dr.employee_id = u.id WHERE dr.status='PENDING' AND u.manager_id=$1`
 	discountQueryCountPendingForAdmin   = `SELECT COUNT(*) FROM discount_requests WHERE status='PENDING'`
 )
@@ -101,19 +101,36 @@ func (r *discountRequestRepository) GetPendingForManager(ctx context.Context, ma
 
 	var result []map[string]interface{}
 	for rows.Next() {
-		var id int64
-		var name, reason string
-		var percent float64
-		var createdAt interface{}
-		if err := rows.Scan(&id, &name, &percent, &reason, &createdAt); err != nil {
+		var (
+			id         int64
+			employeeID int64
+			name       string
+			reason     string
+			percent    float64
+			created    interface{}
+		)
+		if err := rows.Scan(&id, &employeeID, &name, &percent, &reason, &created); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
+
+		var createdAt time.Time
+		switch v := created.(type) {
+		case time.Time:
+			createdAt = v
+		case *time.Time:
+			if v != nil {
+				createdAt = *v
+			}
+		}
+
 		result = append(result, map[string]interface{}{
 			"id":                  id,
+			"user_id":             employeeID,
 			"employee":            name,
 			"discount_percentage": percent,
 			"reason":              reason,
-			"created_at":          createdAt,
+			"status":              "PENDING",
+			"created_at":          createdAt.Format(time.RFC3339),
 		})
 	}
 	return result, total, nil
@@ -134,19 +151,36 @@ func (r *discountRequestRepository) GetPendingForAdmin(ctx context.Context, limi
 
 	var result []map[string]interface{}
 	for rows.Next() {
-		var id int64
-		var name, reason string
-		var percent float64
-		var createdAt interface{}
-		if err := rows.Scan(&id, &name, &percent, &reason, &createdAt); err != nil {
+		var (
+			id         int64
+			employeeID int64
+			name       string
+			reason     string
+			percent    float64
+			created    interface{}
+		)
+		if err := rows.Scan(&id, &employeeID, &name, &percent, &reason, &created); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
+
+		var createdAt time.Time
+		switch v := created.(type) {
+		case time.Time:
+			createdAt = v
+		case *time.Time:
+			if v != nil {
+				createdAt = *v
+			}
+		}
+
 		result = append(result, map[string]interface{}{
 			"id":                  id,
+			"user_id":             employeeID,
 			"employee":            name,
 			"discount_percentage": percent,
 			"reason":              reason,
-			"created_at":          createdAt,
+			"status":              "PENDING",
+			"created_at":          createdAt.Format(time.RFC3339),
 		})
 	}
 	return result, total, nil

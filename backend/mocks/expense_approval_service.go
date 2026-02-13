@@ -71,34 +71,41 @@ func (_c *ExpenseApprovalService_ApproveExpense_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// GetPendingExpenseRequests provides a mock function with given fields: ctx, role, approverID
-func (_m *ExpenseApprovalService) GetPendingExpenseRequests(ctx context.Context, role string, approverID int64) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx, role, approverID)
+// GetPendingExpenseRequests provides a mock function with given fields: ctx, role, approverID, limit, offset
+func (_m *ExpenseApprovalService) GetPendingExpenseRequests(ctx context.Context, role string, approverID int64, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, role, approverID, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPendingExpenseRequests")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int64) ([]map[string]interface{}, error)); ok {
-		return rf(ctx, role, approverID)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, role, approverID, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, int64) []map[string]interface{}); ok {
-		r0 = rf(ctx, role, approverID)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, role, approverID, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, int64) error); ok {
-		r1 = rf(ctx, role, approverID)
+	if rf, ok := ret.Get(1).(func(context.Context, string, int64, int, int) int); ok {
+		r1 = rf(ctx, role, approverID, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, string, int64, int, int) error); ok {
+		r2 = rf(ctx, role, approverID, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // ExpenseApprovalService_GetPendingExpenseRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingExpenseRequests'
@@ -110,23 +117,25 @@ type ExpenseApprovalService_GetPendingExpenseRequests_Call struct {
 //   - ctx context.Context
 //   - role string
 //   - approverID int64
-func (_e *ExpenseApprovalService_Expecter) GetPendingExpenseRequests(ctx interface{}, role interface{}, approverID interface{}) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
-	return &ExpenseApprovalService_GetPendingExpenseRequests_Call{Call: _e.mock.On("GetPendingExpenseRequests", ctx, role, approverID)}
+//   - limit int
+//   - offset int
+func (_e *ExpenseApprovalService_Expecter) GetPendingExpenseRequests(ctx interface{}, role interface{}, approverID interface{}, limit interface{}, offset interface{}) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
+	return &ExpenseApprovalService_GetPendingExpenseRequests_Call{Call: _e.mock.On("GetPendingExpenseRequests", ctx, role, approverID, limit, offset)}
 }
 
-func (_c *ExpenseApprovalService_GetPendingExpenseRequests_Call) Run(run func(ctx context.Context, role string, approverID int64)) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
+func (_c *ExpenseApprovalService_GetPendingExpenseRequests_Call) Run(run func(ctx context.Context, role string, approverID int64, limit int, offset int)) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int64))
+		run(args[0].(context.Context), args[1].(string), args[2].(int64), args[3].(int), args[4].(int))
 	})
 	return _c
 }
 
-func (_c *ExpenseApprovalService_GetPendingExpenseRequests_Call) Return(_a0 []map[string]interface{}, _a1 error) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *ExpenseApprovalService_GetPendingExpenseRequests_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *ExpenseApprovalService_GetPendingExpenseRequests_Call) RunAndReturn(run func(context.Context, string, int64) ([]map[string]interface{}, error)) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
+func (_c *ExpenseApprovalService_GetPendingExpenseRequests_Call) RunAndReturn(run func(context.Context, string, int64, int, int) ([]map[string]interface{}, int, error)) *ExpenseApprovalService_GetPendingExpenseRequests_Call {
 	_c.Call.Return(run)
 	return _c
 }

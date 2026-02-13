@@ -182,34 +182,41 @@ func (_c *ExpenseRequestRepository_GetByID_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// GetPendingForAdmin provides a mock function with given fields: ctx
-func (_m *ExpenseRequestRepository) GetPendingForAdmin(ctx context.Context) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx)
+// GetPendingForAdmin provides a mock function with given fields: ctx, limit, offset
+func (_m *ExpenseRequestRepository) GetPendingForAdmin(ctx context.Context, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPendingForAdmin")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]map[string]interface{}, error)); ok {
-		return rf(ctx)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []map[string]interface{}); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, int, int) int); ok {
+		r1 = rf(ctx, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, int, int) error); ok {
+		r2 = rf(ctx, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // ExpenseRequestRepository_GetPendingForAdmin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingForAdmin'
@@ -219,55 +226,64 @@ type ExpenseRequestRepository_GetPendingForAdmin_Call struct {
 
 // GetPendingForAdmin is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *ExpenseRequestRepository_Expecter) GetPendingForAdmin(ctx interface{}) *ExpenseRequestRepository_GetPendingForAdmin_Call {
-	return &ExpenseRequestRepository_GetPendingForAdmin_Call{Call: _e.mock.On("GetPendingForAdmin", ctx)}
+//   - limit int
+//   - offset int
+func (_e *ExpenseRequestRepository_Expecter) GetPendingForAdmin(ctx interface{}, limit interface{}, offset interface{}) *ExpenseRequestRepository_GetPendingForAdmin_Call {
+	return &ExpenseRequestRepository_GetPendingForAdmin_Call{Call: _e.mock.On("GetPendingForAdmin", ctx, limit, offset)}
 }
 
-func (_c *ExpenseRequestRepository_GetPendingForAdmin_Call) Run(run func(ctx context.Context)) *ExpenseRequestRepository_GetPendingForAdmin_Call {
+func (_c *ExpenseRequestRepository_GetPendingForAdmin_Call) Run(run func(ctx context.Context, limit int, offset int)) *ExpenseRequestRepository_GetPendingForAdmin_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
 	})
 	return _c
 }
 
-func (_c *ExpenseRequestRepository_GetPendingForAdmin_Call) Return(_a0 []map[string]interface{}, _a1 error) *ExpenseRequestRepository_GetPendingForAdmin_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *ExpenseRequestRepository_GetPendingForAdmin_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *ExpenseRequestRepository_GetPendingForAdmin_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *ExpenseRequestRepository_GetPendingForAdmin_Call) RunAndReturn(run func(context.Context) ([]map[string]interface{}, error)) *ExpenseRequestRepository_GetPendingForAdmin_Call {
+func (_c *ExpenseRequestRepository_GetPendingForAdmin_Call) RunAndReturn(run func(context.Context, int, int) ([]map[string]interface{}, int, error)) *ExpenseRequestRepository_GetPendingForAdmin_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetPendingForManager provides a mock function with given fields: ctx, managerID
-func (_m *ExpenseRequestRepository) GetPendingForManager(ctx context.Context, managerID int64) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx, managerID)
+// GetPendingForManager provides a mock function with given fields: ctx, managerID, limit, offset
+func (_m *ExpenseRequestRepository) GetPendingForManager(ctx context.Context, managerID int64, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, managerID, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetPendingForManager")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]map[string]interface{}, error)); ok {
-		return rf(ctx, managerID)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, managerID, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []map[string]interface{}); ok {
-		r0 = rf(ctx, managerID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, managerID, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, managerID)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) int); ok {
+		r1 = rf(ctx, managerID, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int, int) error); ok {
+		r2 = rf(ctx, managerID, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // ExpenseRequestRepository_GetPendingForManager_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingForManager'
@@ -278,23 +294,25 @@ type ExpenseRequestRepository_GetPendingForManager_Call struct {
 // GetPendingForManager is a helper method to define mock.On call
 //   - ctx context.Context
 //   - managerID int64
-func (_e *ExpenseRequestRepository_Expecter) GetPendingForManager(ctx interface{}, managerID interface{}) *ExpenseRequestRepository_GetPendingForManager_Call {
-	return &ExpenseRequestRepository_GetPendingForManager_Call{Call: _e.mock.On("GetPendingForManager", ctx, managerID)}
+//   - limit int
+//   - offset int
+func (_e *ExpenseRequestRepository_Expecter) GetPendingForManager(ctx interface{}, managerID interface{}, limit interface{}, offset interface{}) *ExpenseRequestRepository_GetPendingForManager_Call {
+	return &ExpenseRequestRepository_GetPendingForManager_Call{Call: _e.mock.On("GetPendingForManager", ctx, managerID, limit, offset)}
 }
 
-func (_c *ExpenseRequestRepository_GetPendingForManager_Call) Run(run func(ctx context.Context, managerID int64)) *ExpenseRequestRepository_GetPendingForManager_Call {
+func (_c *ExpenseRequestRepository_GetPendingForManager_Call) Run(run func(ctx context.Context, managerID int64, limit int, offset int)) *ExpenseRequestRepository_GetPendingForManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
 	})
 	return _c
 }
 
-func (_c *ExpenseRequestRepository_GetPendingForManager_Call) Return(_a0 []map[string]interface{}, _a1 error) *ExpenseRequestRepository_GetPendingForManager_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *ExpenseRequestRepository_GetPendingForManager_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *ExpenseRequestRepository_GetPendingForManager_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *ExpenseRequestRepository_GetPendingForManager_Call) RunAndReturn(run func(context.Context, int64) ([]map[string]interface{}, error)) *ExpenseRequestRepository_GetPendingForManager_Call {
+func (_c *ExpenseRequestRepository_GetPendingForManager_Call) RunAndReturn(run func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)) *ExpenseRequestRepository_GetPendingForManager_Call {
 	_c.Call.Return(run)
 	return _c
 }

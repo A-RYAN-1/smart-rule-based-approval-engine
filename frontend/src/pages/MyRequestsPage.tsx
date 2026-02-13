@@ -158,19 +158,11 @@ export default function MyRequestsPage() {
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold">{leaveTotal + expenseTotal + discountTotal}</p>
               <p className="text-sm text-muted-foreground">Total Requests</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-status-pending">
-                {leaveTotal + expenseTotal + discountTotal}
-              </p>
-              <p className="text-sm text-muted-foreground">Managed by API Pagination</p>
             </CardContent>
           </Card>
           <Card>
@@ -342,7 +334,7 @@ export default function MyRequestsPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-6 py-6 border-t bg-muted/10">
                   <div className="text-xs font-medium text-muted-foreground tracking-tight">
-                    Showing <span className="text-foreground">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-foreground">{Math.min(currentPage * ITEMS_PER_PAGE, filteredRequests.length)}</span> of <span className="text-foreground">{filteredRequests.length}</span> entries
+                    Showing <span className="text-foreground">{currentTotal === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-foreground">{currentTotal === 0 ? 0 : Math.min(currentPage * ITEMS_PER_PAGE, currentTotal)}</span> of <span className="text-foreground">{currentTotal}</span> entries
                   </div>
                   <div className="flex items-center gap-2">
                     <Button

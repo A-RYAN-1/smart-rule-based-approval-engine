@@ -82,34 +82,41 @@ func (_c *MyRequestsService_GetMyAllRequests_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// GetMyRequests provides a mock function with given fields: ctx, userID, reqType
-func (_m *MyRequestsService) GetMyRequests(ctx context.Context, userID int64, reqType string) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx, userID, reqType)
+// GetMyRequests provides a mock function with given fields: ctx, userID, reqType, limit, offset
+func (_m *MyRequestsService) GetMyRequests(ctx context.Context, userID int64, reqType string, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, userID, reqType, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMyRequests")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) ([]map[string]interface{}, error)); ok {
-		return rf(ctx, userID, reqType)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, userID, reqType, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) []map[string]interface{}); ok {
-		r0 = rf(ctx, userID, reqType)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, string, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, userID, reqType, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64, string) error); ok {
-		r1 = rf(ctx, userID, reqType)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, string, int, int) int); ok {
+		r1 = rf(ctx, userID, reqType, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, int64, string, int, int) error); ok {
+		r2 = rf(ctx, userID, reqType, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MyRequestsService_GetMyRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMyRequests'
@@ -121,23 +128,87 @@ type MyRequestsService_GetMyRequests_Call struct {
 //   - ctx context.Context
 //   - userID int64
 //   - reqType string
-func (_e *MyRequestsService_Expecter) GetMyRequests(ctx interface{}, userID interface{}, reqType interface{}) *MyRequestsService_GetMyRequests_Call {
-	return &MyRequestsService_GetMyRequests_Call{Call: _e.mock.On("GetMyRequests", ctx, userID, reqType)}
+//   - limit int
+//   - offset int
+func (_e *MyRequestsService_Expecter) GetMyRequests(ctx interface{}, userID interface{}, reqType interface{}, limit interface{}, offset interface{}) *MyRequestsService_GetMyRequests_Call {
+	return &MyRequestsService_GetMyRequests_Call{Call: _e.mock.On("GetMyRequests", ctx, userID, reqType, limit, offset)}
 }
 
-func (_c *MyRequestsService_GetMyRequests_Call) Run(run func(ctx context.Context, userID int64, reqType string)) *MyRequestsService_GetMyRequests_Call {
+func (_c *MyRequestsService_GetMyRequests_Call) Run(run func(ctx context.Context, userID int64, reqType string, limit int, offset int)) *MyRequestsService_GetMyRequests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(string))
+		run(args[0].(context.Context), args[1].(int64), args[2].(string), args[3].(int), args[4].(int))
 	})
 	return _c
 }
 
-func (_c *MyRequestsService_GetMyRequests_Call) Return(_a0 []map[string]interface{}, _a1 error) *MyRequestsService_GetMyRequests_Call {
+func (_c *MyRequestsService_GetMyRequests_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *MyRequestsService_GetMyRequests_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MyRequestsService_GetMyRequests_Call) RunAndReturn(run func(context.Context, int64, string, int, int) ([]map[string]interface{}, int, error)) *MyRequestsService_GetMyRequests_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPendingAllRequests provides a mock function with given fields: ctx, role, userID, limit, offset
+func (_m *MyRequestsService) GetPendingAllRequests(ctx context.Context, role string, userID int64, limit int, offset int) (map[string]interface{}, error) {
+	ret := _m.Called(ctx, role, userID, limit, offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPendingAllRequests")
+	}
+
+	var r0 map[string]interface{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int, int) (map[string]interface{}, error)); ok {
+		return rf(ctx, role, userID, limit, offset)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int, int) map[string]interface{}); ok {
+		r0 = rf(ctx, role, userID, limit, offset)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int64, int, int) error); ok {
+		r1 = rf(ctx, role, userID, limit, offset)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MyRequestsService_GetPendingAllRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingAllRequests'
+type MyRequestsService_GetPendingAllRequests_Call struct {
+	*mock.Call
+}
+
+// GetPendingAllRequests is a helper method to define mock.On call
+//   - ctx context.Context
+//   - role string
+//   - userID int64
+//   - limit int
+//   - offset int
+func (_e *MyRequestsService_Expecter) GetPendingAllRequests(ctx interface{}, role interface{}, userID interface{}, limit interface{}, offset interface{}) *MyRequestsService_GetPendingAllRequests_Call {
+	return &MyRequestsService_GetPendingAllRequests_Call{Call: _e.mock.On("GetPendingAllRequests", ctx, role, userID, limit, offset)}
+}
+
+func (_c *MyRequestsService_GetPendingAllRequests_Call) Run(run func(ctx context.Context, role string, userID int64, limit int, offset int)) *MyRequestsService_GetPendingAllRequests_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int64), args[3].(int), args[4].(int))
+	})
+	return _c
+}
+
+func (_c *MyRequestsService_GetPendingAllRequests_Call) Return(_a0 map[string]interface{}, _a1 error) *MyRequestsService_GetPendingAllRequests_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MyRequestsService_GetMyRequests_Call) RunAndReturn(run func(context.Context, int64, string) ([]map[string]interface{}, error)) *MyRequestsService_GetMyRequests_Call {
+func (_c *MyRequestsService_GetPendingAllRequests_Call) RunAndReturn(run func(context.Context, string, int64, int, int) (map[string]interface{}, error)) *MyRequestsService_GetPendingAllRequests_Call {
 	_c.Call.Return(run)
 	return _c
 }

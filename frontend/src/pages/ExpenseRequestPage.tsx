@@ -26,13 +26,16 @@ const expenseCategories = [
 export default function ExpenseRequestPage() {
   const { user } = useAuth();
   const { requestExpense } = useExpenses();
-  const { balances: unifiedBalances } = useBalances();
+  const { balances: unifiedBalances, isLoading: isLoadingBalances } = useBalances();
   const { toast } = useToast();
 
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const remainingExpense = unifiedBalances?.expenses.remaining;
+  const balancesError = !isLoadingBalances && remainingExpense === undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +57,16 @@ export default function ExpenseRequestPage() {
 
     const { amount: sanitizedAmount, reason: sanitizedReason } = result.data;
 
-    const remainingExpense = unifiedBalances?.expenses.remaining ?? 0;
+    // Check if balances failed to load
+    if (remainingExpense === undefined) {
+      toast({
+        variant: "destructive",
+        title: "Unable to load balances",
+        description: "Please refresh the page and try again.",
+      });
+      return;
+    }
+
     if (sanitizedAmount > remainingExpense) {
       toast({
         variant: "destructive",
@@ -92,31 +104,40 @@ export default function ExpenseRequestPage() {
           <p className="text-muted-foreground mt-1">Submit an expense reimbursement request</p>
         </div>
 
-        {/* Expense Limits Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Receipt className="h-4 w-4 text-expense" />
-              Expense Guidelines
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-3 rounded-lg bg-status-approved-bg text-center">
-                <p className="text-xs font-medium text-muted-foreground">Auto-Approved</p>
-                <p className="text-lg font-bold text-status-approved">&lt; $1,000</p>
+        {/* Your Expense Balance */}
+        {isLoadingBalances ? (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
               </div>
-              <div className="p-3 rounded-lg bg-status-pending-bg text-center">
-                <p className="text-xs font-medium text-muted-foreground">Manager Review</p>
-                <p className="text-lg font-bold text-status-pending">$1K - $5K</p>
+            </CardContent>
+          </Card>
+        ) : balancesError ? (
+          <Card className="border-destructive/50 bg-destructive/10">
+            <CardContent className="p-4">
+              <p className="text-sm text-destructive">
+                <Info className="h-4 w-4 inline mr-2" />
+                Unable to load your expense balance. Please refresh the page.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-expense/20">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Your Remaining Expense Limit</p>
+                  <p className="text-2xl font-bold text-expense">${remainingExpense?.toLocaleString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total Allocation</p>
+                  <p className="text-lg font-semibold">${unifiedBalances?.expenses.total?.toLocaleString()}</p>
+                </div>
               </div>
-              <div className="p-3 rounded-lg bg-status-rejected-bg text-center">
-                <p className="text-xs font-medium text-muted-foreground">Finance Review</p>
-                <p className="text-lg font-bold text-status-rejected">&gt; $5,000</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}        
 
         {/* Expense Request Form */}
         <Card>
@@ -183,22 +204,6 @@ export default function ExpenseRequestPage() {
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Info Card */}
-        <Card className="bg-expense-bg border-expense/20">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <Info className="h-5 w-5 text-expense flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Receipt Requirements</p>
-                <p className="text-sm text-muted-foreground">
-                  Please keep all receipts for expenses over $50. Receipts may be requested
-                  during the review process. Expenses without proper documentation may be rejected.
-                </p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

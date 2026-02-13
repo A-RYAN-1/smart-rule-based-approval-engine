@@ -39,6 +39,19 @@ export default function ReportsPage() {
     isLoadingRules
   } = useAdmin();
 
+  // Debug: Log all query states
+  console.log('[ReportsPage] Loading states:', {
+    isLoadingStatusDistribution,
+    isLoadingRequestsByType,
+    isLoadingRules,
+    statusDistribution: statusDistribution ? 'exists' : 'null',
+    requestsByType: requestsByType ? `array[${requestsByType.length}]` : 'null',
+    rules: rules ? `array[${rules.length}]` : 'null'
+  });
+  console.log('[ReportsPage] statusDistribution data:', statusDistribution);
+  console.log('[ReportsPage] requestsByType data:', requestsByType);
+  console.log('[ReportsPage] rules data:', rules);
+
   // Only admins can access
   if (user?.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
@@ -46,8 +59,10 @@ export default function ReportsPage() {
 
   const isLoading = isLoadingStatusDistribution || isLoadingRequestsByType || isLoadingRules;
 
+  console.log('[ReportsPage] Is Loading:', isLoading);
+
   // Derived Stats Logic
-  const autoApprovedTotal = requestsByType.reduce((acc, curr) => acc + (curr.auto_approved || 0), 0);
+  const autoApprovedTotal = requestsByType?.reduce((acc, curr) => acc + (curr.auto_approved || 0), 0) || 0;
   const totalApproved = statusDistribution?.approved || 0;
   const manualApproved = Math.max(0, totalApproved - autoApprovedTotal);
 
@@ -65,6 +80,15 @@ export default function ReportsPage() {
     ? Math.round((totalAutoProcessed / processedTotal) * 100)
     : 0;
 
+  console.log('[ReportsPage] Calculated stats:', {
+    autoApprovedTotal,
+    totalApproved,
+    manualApproved,
+    totalRequests,
+    pendingRequests,
+    autoProcessingRate
+  });
+
   // Status distribution data for Pie Chart
   const statusData = [
     { name: 'Approved (Manual)', value: manualApproved, color: COLORS.approvedManual },
@@ -76,7 +100,7 @@ export default function ReportsPage() {
   ].filter(s => s.value > 0);
 
   // Request type distribution data for Bar Chart
-  const typeData = requestsByType.map(item => ({
+  const typeData = (requestsByType || []).map(item => ({
     name: item.type.charAt(0).toUpperCase() + item.type.slice(1).toLowerCase(),
     count: item.total_requests,
     auto: item.auto_approved
@@ -89,9 +113,10 @@ export default function ReportsPage() {
     autoRejected
   };
 
-  const activeRules = rules.filter(r => r.isActive).length;
+  const activeRules = rules?.filter(r => r.isActive).length || 0;
 
   if (isLoading) {
+    console.log('[ReportsPage] Showing loading spinner');
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -101,6 +126,7 @@ export default function ReportsPage() {
     );
   }
 
+  console.log('[ReportsPage] Rendering content page');
   return (
     <AppLayout>
       <div className="space-y-6">

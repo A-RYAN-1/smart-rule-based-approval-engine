@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/ankita-advitot/rule_based_approval_engine/constants"
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/apperrors"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/response"
@@ -37,7 +38,7 @@ func (h *ReportHandler) GetDashboardSummary(c *gin.Context) {
 
 func (h *ReportHandler) GetRequestStatusDistribution(c *gin.Context) {
 	role := c.GetString("role")
-	if role != "ADMIN" {
+	if role != constants.RoleAdmin {
 		handleReportError(c, apperrors.ErrAdminOnly)
 		return
 	}
@@ -54,7 +55,7 @@ func (h *ReportHandler) GetRequestStatusDistribution(c *gin.Context) {
 
 func (h *ReportHandler) GetRequestsByType(c *gin.Context) {
 	role := c.GetString("role")
-	if role != "ADMIN" {
+	if role != constants.RoleAdmin {
 		handleReportError(c, apperrors.ErrAdminOnly)
 		return
 	}

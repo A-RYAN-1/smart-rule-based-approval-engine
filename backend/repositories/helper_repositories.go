@@ -25,7 +25,7 @@ const (
 	helperQueryCountMyLeaves    = `SELECT COUNT(*) FROM leave_requests WHERE employee_id = $1`
 	helperQueryCountMyExpenses  = `SELECT COUNT(*) FROM expense_requests WHERE employee_id = $1`
 	helperQueryCountMyDiscounts = `SELECT COUNT(*) FROM discount_requests WHERE employee_id = $1`
-	helperQueryAddHoliday = `INSERT INTO holidays (holiday_date, description, created_by)
+	helperQueryAddHoliday       = `INSERT INTO holidays (holiday_date, description, created_by)
 		 VALUES ($1,$2,$3)`
 	helperQueryGetHolidays   = `SELECT id, holiday_date, description FROM holidays ORDER BY holiday_date`
 	helperQueryDeleteHoliday = `DELETE FROM holidays WHERE id=$1`
@@ -389,6 +389,33 @@ func (r *reportRepository) GetRequestsByTypeReport(ctx context.Context) ([]model
 	}
 
 	return reports, utils.MapPgError(rows.Err())
+}
+
+func (r *reportRepository) GetPendingLeaveCount(ctx context.Context) (int, error) {
+	var count int
+	err := r.db.QueryRow(
+		ctx,
+		"SELECT COUNT(*) FROM leave_requests WHERE status = 'PENDING'",
+	).Scan(&count)
+	return count, utils.MapPgError(err)
+}
+
+func (r *reportRepository) GetPendingExpenseCount(ctx context.Context) (int, error) {
+	var count int
+	err := r.db.QueryRow(
+		ctx,
+		"SELECT COUNT(*) FROM expense_requests WHERE status = 'PENDING'",
+	).Scan(&count)
+	return count, utils.MapPgError(err)
+}
+
+func (r *reportRepository) GetPendingDiscountCount(ctx context.Context) (int, error) {
+	var count int
+	err := r.db.QueryRow(
+		ctx,
+		"SELECT COUNT(*) FROM discount_requests WHERE status = 'PENDING'",
+	).Scan(&count)
+	return count, utils.MapPgError(err)
 }
 
 func (r *holidayRepository) IsHoliday(ctx context.Context, date time.Time) (bool, error) {

@@ -32,9 +32,44 @@ func (s *ReportService) GetDashboardSummary(ctx context.Context, role string) (m
 		return nil, err
 	}
 
+	// Get pending counts by type
+	pendingLeave, err := s.reportRepo.GetPendingLeaveCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pendingExpense, err := s.reportRepo.GetPendingExpenseCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pendingDiscount, err := s.reportRepo.GetPendingDiscountCount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build pending distribution by type
+	pendingByType := map[string]interface{}{
+		"leave":    pendingLeave,
+		"expense":  pendingExpense,
+		"discount": pendingDiscount,
+	}
+
 	return map[string]interface{}{
-		"distribution": dist,
-		"type_report":  types,
+		"total_pending": dist["pending"],
+		"approved":      dist["approved"],
+		"rejected":      dist["rejected"],
+		"auto_rejected": dist["auto_rejected"],
+		"pending":       dist["pending"],
+		"cancelled":     dist["cancelled"],
+		"distribution": map[string]interface{}{
+			"pending":       pendingByType,
+			"approved":      dist["approved"],
+			"rejected":      dist["rejected"],
+			"auto_rejected": dist["auto_rejected"],
+			"cancelled":     dist["cancelled"],
+		},
+		"type_report": types,
 	}, nil
 }
 

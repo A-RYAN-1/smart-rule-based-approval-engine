@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/ankita-advitot/rule_based_approval_engine/constants"
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 )
@@ -23,32 +24,32 @@ const (
 		FROM discount_requests WHERE employee_id = $1
 	`
 	aggQueryFetchPendingLeavesForManager = `
-		SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at
+		SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.status::TEXT, lr.created_at
 		FROM leave_requests lr JOIN users u ON lr.employee_id = u.id
 		WHERE lr.status = 'PENDING' AND u.manager_id = $1
 	`
 	aggQueryFetchPendingLeavesForAdmin = `
-		SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at
+		SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.status::TEXT, lr.created_at
 		FROM leave_requests lr JOIN users u ON lr.employee_id = u.id
 		WHERE lr.status = 'PENDING'
 	`
 	aggQueryFetchPendingExpensesForManager = `
-		SELECT er.id, u.name, er.amount, er.category, er.reason, er.created_at
+		SELECT er.id, er.employee_id, u.name, er.amount, er.category, er.reason, er.status::TEXT, er.created_at
 		FROM expense_requests er JOIN users u ON er.employee_id = u.id
 		WHERE er.status = 'PENDING' AND u.manager_id = $1
 	`
 	aggQueryFetchPendingExpensesForAdmin = `
-		SELECT er.id, u.name, er.amount, er.category, er.reason, er.created_at
+		SELECT er.id, er.employee_id, u.name, er.amount, er.category, er.reason, er.status::TEXT, er.created_at
 		FROM expense_requests er JOIN users u ON er.employee_id = u.id
 		WHERE er.status = 'PENDING'
 	`
 	aggQueryFetchPendingDiscountsForManager = `
-		SELECT dr.id, u.name, dr.discount_percentage, dr.reason, dr.created_at
+		SELECT dr.id, dr.employee_id, u.name, dr.discount_percentage, dr.reason, dr.status::TEXT, dr.created_at
 		FROM discount_requests dr JOIN users u ON dr.employee_id = u.id
 		WHERE dr.status = 'PENDING' AND u.manager_id = $1
 	`
 	aggQueryFetchPendingDiscountsForAdmin = `
-		SELECT dr.id, u.name, dr.discount_percentage, dr.reason, dr.created_at
+		SELECT dr.id, dr.employee_id, u.name, dr.discount_percentage, dr.reason, dr.status::TEXT, dr.created_at
 		FROM discount_requests dr JOIN users u ON dr.employee_id = u.id
 		WHERE dr.status = 'PENDING'
 	`
@@ -75,7 +76,7 @@ func (r *aggregatedRepository) GetPendingAllRequests(ctx context.Context, role s
 
 	var lReqs, eReqs, dReqs []aggCombinedReq
 
-	if role == "admin" {
+	if role == constants.RoleAdmin {
 		lReqs, err = r.fetchPendingRequests(ctx, aggQueryFetchPendingLeavesForAdmin, "LEAVE", 0)
 		if err != nil {
 			return
@@ -155,14 +156,16 @@ func (r *aggregatedRepository) fetchPendingRequests(ctx context.Context, query, 
 		switch reqType {
 		case "LEAVE":
 			var (
-				id       int64
-				name     string
-				from, to time.Time
-				lType    string
-				reason   string
-				created  time.Time
+				id         int64
+				employeeID int64
+				name       string
+				from, to   time.Time
+				lType      string
+				reason     string
+				status     string
+				created    time.Time
 			)
-			if err := rows.Scan(&id, &name, &from, &to, &lType, &reason, &created); err != nil {
+			if err := rows.Scan(&id, &employeeID, &name, &from, &to, &lType, &reason, &status, &created); err != nil {
 				return nil, utils.MapPgError(err)
 			}
 			res = append(res, aggCombinedReq{
@@ -170,24 +173,28 @@ func (r *aggregatedRepository) fetchPendingRequests(ctx context.Context, query, 
 				createdAt: created,
 				data: map[string]interface{}{
 					"id":         id,
+					"user_id":    employeeID,
 					"employee":   name,
 					"from_date":  from.Format("2006-01-02"),
 					"to_date":    to.Format("2006-01-02"),
 					"leave_type": lType,
 					"reason":     reason,
+					"status":     status,
 					"created_at": created.Format(time.RFC3339),
 				},
 			})
 		case "EXPENSE":
 			var (
-				id      int64
-				name    string
-				amount  float64
-				cat     string
-				reason  *string
-				created time.Time
+				id         int64
+				employeeID int64
+				name       string
+				amount     float64
+				cat        string
+				reason     *string
+				status     string
+				created    time.Time
 			)
-			if err := rows.Scan(&id, &name, &amount, &cat, &reason, &created); err != nil {
+			if err := rows.Scan(&id, &employeeID, &name, &amount, &cat, &reason, &status, &created); err != nil {
 				return nil, utils.MapPgError(err)
 			}
 			res = append(res, aggCombinedReq{
@@ -195,22 +202,26 @@ func (r *aggregatedRepository) fetchPendingRequests(ctx context.Context, query, 
 				createdAt: created,
 				data: map[string]interface{}{
 					"id":         id,
+					"user_id":    employeeID,
 					"employee":   name,
 					"amount":     amount,
 					"category":   cat,
 					"reason":     reason,
+					"status":     status,
 					"created_at": created.Format(time.RFC3339),
 				},
 			})
 		case "DISCOUNT":
 			var (
-				id      int64
-				name    string
-				percent float64
-				reason  string
-				created interface{}
+				id         int64
+				employeeID int64
+				name       string
+				percent    float64
+				reason     string
+				status     string
+				created    interface{}
 			)
-			if err := rows.Scan(&id, &name, &percent, &reason, &created); err != nil {
+			if err := rows.Scan(&id, &employeeID, &name, &percent, &reason, &status, &created); err != nil {
 				return nil, utils.MapPgError(err)
 			}
 
@@ -229,9 +240,11 @@ func (r *aggregatedRepository) fetchPendingRequests(ctx context.Context, query, 
 				createdAt: createdAt,
 				data: map[string]interface{}{
 					"id":                  id,
+					"user_id":             employeeID,
 					"employee":            name,
 					"discount_percentage": percent,
 					"reason":              reason,
+					"status":              status,
 					"created_at":          createdAt.Format(time.RFC3339),
 				},
 			})

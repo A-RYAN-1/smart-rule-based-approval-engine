@@ -250,22 +250,6 @@ export default function LeaveRequestPage() {
             </form>
           </CardContent>
         </Card>
-
-        {/* Info Card */}
-        <Card className="bg-primary/5 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Automatic Processing</p>
-                <p className="text-sm text-muted-foreground">
-                  Leave requests are evaluated against company rules. Sick leaves under 2 days are
-                  auto-approved. Requests over 7 days require manager approval.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </AppLayout>
   );

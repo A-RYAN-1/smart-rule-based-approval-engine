@@ -138,6 +138,9 @@ type MyRequestsRepository interface {
 type ReportRepository interface {
 	GetRequestStatusDistribution(ctx context.Context) (map[string]int, error)
 	GetRequestsByTypeReport(ctx context.Context) ([]models.RequestTypeReport, error)
+	GetPendingLeaveCount(ctx context.Context) (int, error)
+	GetPendingExpenseCount(ctx context.Context) (int, error)
+	GetPendingDiscountCount(ctx context.Context) (int, error)
 }
 
 // Service interfaces

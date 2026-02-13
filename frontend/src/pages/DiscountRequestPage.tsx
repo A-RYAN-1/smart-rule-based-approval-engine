@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDiscounts } from '@/hooks/useDiscounts';
 import { useBalances } from '@/hooks/useBalances';
+import { useAdmin } from '@/hooks/useAdmin';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,22 +18,66 @@ import { discountRequestSchema } from '@/lib/validations';
 export default function DiscountRequestPage() {
   const { user } = useAuth();
   const { requestDiscount } = useDiscounts();
+  const { rules } = useAdmin();
   const { toast } = useToast();
 
   const [percentage, setPercentage] = useState([5]);
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Extract discount thresholds from active rules
+  const discountThresholds = useMemo(() => {
+    // Default thresholds (fallback)
+    const defaults = {
+      autoApproveThreshold: 10,      // Auto-approve up to this %
+      managerApprovalThreshold: 20,  // Manager approval for this range
+      financeApprovalThreshold: 100  // Finance approval above this
+    };
+
+    if (!rules || rules.length === 0) return defaults;
+
+    // Look for discount rules and extract conditions
+    const discountRules = rules.filter(r => r.requestType.toUpperCase() === 'DISCOUNT' && r.isActive);
+    
+    // Parse conditions to find thresholds
+    // Rules typically have conditions like: { "discount_percentage": { "<=": 10 } }
+    for (const rule of discountRules) {
+      if (rule.action === 'auto_approve' && rule.condition?.discount_percentage) {
+        const condition = rule.condition.discount_percentage;
+        if (condition['<=']) {
+          defaults.autoApproveThreshold = Math.max(defaults.autoApproveThreshold, condition['<=']);
+        }
+      }
+    }
+
+    // For manager approval threshold, look for rules with manager approval action
+    // or use a range between auto-approve and finance
+    defaults.managerApprovalThreshold = defaults.autoApproveThreshold + 10;
+
+    return defaults;
+  }, [rules]);
+
   const getApprovalStatus = (pct: number) => {
-    if (pct <= 10) return { text: 'Auto-approved', color: 'text-status-approved' };
-    if (pct <= 20) return { text: 'Manager approval', color: 'text-status-pending' };
-    return { text: 'Finance approval', color: 'text-status-rejected' };
+    if (user?.role === 'employee') {
+      if (pct <= discountThresholds.autoApproveThreshold) {
+        return { text: 'Auto-approved', color: 'text-status-approved' };
+      }
+      if (pct <= discountThresholds.managerApprovalThreshold) {
+        return { text: 'Manager approval', color: 'text-status-pending' };
+      }
+      return { text: 'Finance approval', color: 'text-status-rejected' };
+    }
+    // Manager/Admin can auto-approve all discounts they create
+    return { text: 'Auto-approved', color: 'text-status-approved' };
   };
 
   const approvalStatus = getApprovalStatus(percentage[0]);
 
-  const { balances: unifiedBalances } = useBalances();
-  const remainingDiscount = unifiedBalances?.discounts.remaining ?? 100;
+  const { balances: unifiedBalances, isLoading: isLoadingBalances } = useBalances();
+  const remainingDiscount = unifiedBalances?.discounts.remaining;
+
+  // Show error if balances failed to load
+  const balancesError = !isLoadingBalances && remainingDiscount === undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +97,16 @@ export default function DiscountRequestPage() {
     }
 
     const { reason: sanitizedReason } = result.data;
+
+    // Check if balances failed to load
+    if (remainingDiscount === undefined) {
+      toast({
+        variant: "destructive",
+        title: "Unable to load balances",
+        description: "Please refresh the page and try again.",
+      });
+      return;
+    }
 
     if (percentage[0] > remainingDiscount) {
       toast({
@@ -99,35 +154,32 @@ export default function DiscountRequestPage() {
           <h1 className="text-3xl font-bold tracking-tight">Request Discount</h1>
           <p className="text-muted-foreground mt-1">Apply for employee discounts and benefits</p>
         </div>
-
-        {/* Discount Tiers */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Percent className="h-4 w-4 text-discount" />
-              Discount Tiers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-3 rounded-lg bg-status-approved-bg text-center">
-                <p className="text-xs font-medium text-muted-foreground">Standard</p>
-                <p className="text-lg font-bold text-status-approved">≤ 10%</p>
-                <p className="text-xs text-muted-foreground">Auto-approved</p>
+        {/* Your Discount Balance */}
+        {isLoadingBalances ? (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
               </div>
-              <div className="p-3 rounded-lg bg-status-pending-bg text-center">
-                <p className="text-xs font-medium text-muted-foreground">Special</p>
-                <p className="text-lg font-bold text-status-pending">11-20%</p>
-                <p className="text-xs text-muted-foreground">Manager review</p>
-              </div>
-              <div className="p-3 rounded-lg bg-status-rejected-bg text-center">
-                <p className="text-xs font-medium text-muted-foreground">Premium</p>
-                <p className="text-lg font-bold text-status-rejected">21-25%</p>
-                <p className="text-xs text-muted-foreground">Finance review</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : balancesError ? (
+          <Card className="border-destructive/50 bg-destructive/10">
+            <CardContent className="p-4">
+              <p className="text-sm text-destructive">
+                <Info className="h-4 w-4 inline mr-2" />
+                Unable to load your discount balance. Please refresh the page.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-discount/20">
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">Your Remaining Discount Quota</p>
+              <p className="text-2xl font-bold text-discount">{remainingDiscount}% of {unifiedBalances?.discounts.total}%</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Discount Request Form */}
         <Card>
@@ -157,14 +209,14 @@ export default function DiscountRequestPage() {
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>1%</span>
-                  <span>10%</span>
-                  <span>20%</span>
+                  <span>{discountThresholds.autoApproveThreshold}%</span>
+                  <span>{discountThresholds.managerApprovalThreshold}%</span>
                   <span>25%</span>
                 </div>
-                {percentage[0] >= 21 && (
+                {percentage[0] > discountThresholds.managerApprovalThreshold && (
                   <p className="text-sm text-amber-600 flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    Requests above 20% require Finance review and may take longer.
+                    Requests above {discountThresholds.managerApprovalThreshold}% require Finance review and may take longer.
                   </p>
                 )}
               </div>
@@ -193,23 +245,6 @@ export default function DiscountRequestPage() {
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Info Card */}
-        <Card className="bg-discount-bg border-discount/20">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <Info className="h-5 w-5 text-discount flex-shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Discount Policy</p>
-                <p className="text-sm text-muted-foreground">
-                  Employee discounts are available for company products and services.
-                  Standard discounts up to 10% are automatically approved. Higher discounts
-                  require valid justification and management approval.
-                </p>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

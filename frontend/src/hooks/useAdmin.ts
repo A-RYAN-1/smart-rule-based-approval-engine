@@ -10,6 +10,8 @@ export function useAdmin() {
     const isApprover = user?.role === 'admin' || user?.role === 'manager';
     const isAdmin = user?.role === 'admin';
 
+    console.log('[useAdmin] User role:', user?.role, 'isAdmin:', isAdmin);
+
     // Dashboard Summary
     const dashboardSummaryQuery = useQuery({
         queryKey: ['dashboard-summary'],
@@ -17,11 +19,11 @@ export function useAdmin() {
         enabled: isAdmin,
     });
 
-    // Holidays
+    // Holidays (Admin only)
     const holidaysQuery = useQuery({
         queryKey: ['holidays'],
         queryFn: ({ queryKey }) => adminService.getHolidays(10, 0), // Default for now
-        enabled: isApprover,
+        enabled: isAdmin,
     });
 
     const addHolidayMutation = useMutation({
@@ -42,11 +44,11 @@ export function useAdmin() {
         onError: () => toast.error('Failed to delete holiday')
     });
 
-    // Rules
+    // Rules (Admin only)
     const rulesQuery = useQuery({
         queryKey: ['admin-rules'],
         queryFn: ({ queryKey }) => adminService.getRules(20, 0), // Default higher limit for rules
-        enabled: isApprover,
+        enabled: isAdmin,
     });
 
     const addRuleMutation = useMutation({
@@ -84,16 +86,17 @@ export function useAdmin() {
     };
 
     // Reports - Keep for detail pages, but dashboard uses summary
+    // Status and Type reports are admin-only
     const statusDistributionQuery = useQuery({
         queryKey: ['report-status'],
         queryFn: adminService.getStatusDistribution,
-        enabled: isApprover && !isAdmin, // Only if not admin, or if specific report page needs it
+        enabled: isAdmin,
     });
 
     const requestsByTypeQuery = useQuery({
         queryKey: ['report-type'],
         queryFn: adminService.getRequestsByType,
-        enabled: isApprover && !isAdmin,
+        enabled: isAdmin,
     });
 
     const runAutoRejectMutation = useMutation({
@@ -123,6 +126,18 @@ export function useAdmin() {
         });
     };
 
+    // Debug logging
+    console.log('[useAdmin] Query states:', {
+        dashboardSummaryLoading: dashboardSummaryQuery.isLoading,
+        dashboardSummaryError: dashboardSummaryQuery.error,
+        statusDistributionLoading: statusDistributionQuery.isLoading,
+        statusDistributionError: statusDistributionQuery.error,
+        requestsByTypeLoading: requestsByTypeQuery.isLoading,
+        requestsByTypeError: requestsByTypeQuery.error,
+        rulesLoading: rulesQuery.isLoading,
+        rulesError: rulesQuery.error
+    });
+
     return {
         // Dashboard
         dashboardSummary: dashboardSummaryQuery.data,
@@ -143,7 +158,13 @@ export function useAdmin() {
         toggleRule: toggleRuleActive,
 
         // Reports (Legacy/Detailed)
-        statusDistribution: dashboardSummaryQuery.data?.distribution || statusDistributionQuery.data,
+        statusDistribution: dashboardSummaryQuery.data ? {
+            approved: dashboardSummaryQuery.data.approved,
+            rejected: dashboardSummaryQuery.data.rejected,
+            auto_rejected: dashboardSummaryQuery.data.auto_rejected,
+            pending: dashboardSummaryQuery.data.pending,
+            cancelled: dashboardSummaryQuery.data.cancelled,
+        } : statusDistributionQuery.data,
         isLoadingStatusDistribution: dashboardSummaryQuery.isLoading || statusDistributionQuery.isLoading,
         requestsByType: dashboardSummaryQuery.data?.type_report || requestsByTypeQuery.data || [],
         isLoadingRequestsByType: dashboardSummaryQuery.isLoading || requestsByTypeQuery.isLoading,

@@ -25,14 +25,14 @@ const (
 		     approved_by_id=$2,
 		     approval_comment=$3
 		 WHERE id=$4`
-	leaveQueryGetPendingForManager = `SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at 
+	leaveQueryGetPendingForManager = `SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at 
 		 FROM leave_requests lr
 		 JOIN users u ON lr.employee_id = u.id
 		 WHERE lr.status='PENDING'
 		   AND u.manager_id=$1
 		 ORDER BY lr.created_at DESC
 		 LIMIT $2 OFFSET $3`
-	leaveQueryGetPendingForAdmin = `SELECT lr.id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at
+	leaveQueryGetPendingForAdmin = `SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at
 		 FROM leave_requests lr
 		 JOIN users u ON lr.employee_id = u.id
 		 WHERE lr.status='PENDING'
@@ -45,8 +45,8 @@ const (
 		   AND from_date <= $2
 		   AND to_date >= $3
 		 LIMIT 1`
-	leaveQueryCancel             = `UPDATE leave_requests SET status='CANCELLED' WHERE id=$1`
-	leaveQueryGetPendingRequests = "SELECT id, created_at FROM leave_requests WHERE status='PENDING'"
+	leaveQueryCancel                 = `UPDATE leave_requests SET status='CANCELLED' WHERE id=$1`
+	leaveQueryGetPendingRequests     = "SELECT id, created_at FROM leave_requests WHERE status='PENDING'"
 	leaveQueryCountPendingForManager = `SELECT COUNT(*) FROM leave_requests lr JOIN users u ON lr.employee_id = u.id WHERE lr.status='PENDING' AND u.manager_id=$1`
 	leaveQueryCountPendingForAdmin   = `SELECT COUNT(*) FROM leave_requests WHERE status='PENDING'`
 )
@@ -125,21 +125,30 @@ func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, manag
 	var result []map[string]interface{}
 
 	for rows.Next() {
-		var id int64
-		var name, leaveType, reason string
-		var fromDate, toDate, createdAt time.Time
+		var (
+			id         int64
+			employeeID int64
+			name       string
+			leaveType  string
+			reason     string
+			fromDate   time.Time
+			toDate     time.Time
+			createdAt  time.Time
+		)
 
-		if err := rows.Scan(&id, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
+		if err := rows.Scan(&id, &employeeID, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
 			"id":         id,
+			"user_id":    employeeID,
 			"employee":   name,
 			"from_date":  fromDate.Format("2006-01-02"),
 			"to_date":    toDate.Format("2006-01-02"),
 			"leave_type": leaveType,
 			"reason":     reason,
+			"status":     "PENDING", // Since query filters by PENDING
 			"created_at": createdAt.Format(time.RFC3339),
 		})
 	}
@@ -167,21 +176,30 @@ func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context, limit, 
 	var result []map[string]interface{}
 
 	for rows.Next() {
-		var id int64
-		var name, leaveType, reason string
-		var fromDate, toDate, createdAt time.Time
+		var (
+			id         int64
+			employeeID int64
+			name       string
+			leaveType  string
+			reason     string
+			fromDate   time.Time
+			toDate     time.Time
+			createdAt  time.Time
+		)
 
-		if err := rows.Scan(&id, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
+		if err := rows.Scan(&id, &employeeID, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
 			"id":         id,
+			"user_id":    employeeID,
 			"employee":   name,
 			"from_date":  fromDate.Format("2006-01-02"),
 			"to_date":    toDate.Format("2006-01-02"),
 			"leave_type": leaveType,
 			"reason":     reason,
+			"status":     "PENDING",
 			"created_at": createdAt.Format(time.RFC3339),
 		})
 	}

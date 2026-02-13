@@ -107,34 +107,41 @@ func (_c *MyRequestsRepository_GetMyAllRequests_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// GetMyDiscountRequests provides a mock function with given fields: ctx, userID
-func (_m *MyRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx, userID)
+// GetMyDiscountRequests provides a mock function with given fields: ctx, userID, limit, offset
+func (_m *MyRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID int64, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, userID, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMyDiscountRequests")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]map[string]interface{}, error)); ok {
-		return rf(ctx, userID)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, userID, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []map[string]interface{}); ok {
-		r0 = rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, userID, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) int); ok {
+		r1 = rf(ctx, userID, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int, int) error); ok {
+		r2 = rf(ctx, userID, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MyRequestsRepository_GetMyDiscountRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMyDiscountRequests'
@@ -145,55 +152,64 @@ type MyRequestsRepository_GetMyDiscountRequests_Call struct {
 // GetMyDiscountRequests is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID int64
-func (_e *MyRequestsRepository_Expecter) GetMyDiscountRequests(ctx interface{}, userID interface{}) *MyRequestsRepository_GetMyDiscountRequests_Call {
-	return &MyRequestsRepository_GetMyDiscountRequests_Call{Call: _e.mock.On("GetMyDiscountRequests", ctx, userID)}
+//   - limit int
+//   - offset int
+func (_e *MyRequestsRepository_Expecter) GetMyDiscountRequests(ctx interface{}, userID interface{}, limit interface{}, offset interface{}) *MyRequestsRepository_GetMyDiscountRequests_Call {
+	return &MyRequestsRepository_GetMyDiscountRequests_Call{Call: _e.mock.On("GetMyDiscountRequests", ctx, userID, limit, offset)}
 }
 
-func (_c *MyRequestsRepository_GetMyDiscountRequests_Call) Run(run func(ctx context.Context, userID int64)) *MyRequestsRepository_GetMyDiscountRequests_Call {
+func (_c *MyRequestsRepository_GetMyDiscountRequests_Call) Run(run func(ctx context.Context, userID int64, limit int, offset int)) *MyRequestsRepository_GetMyDiscountRequests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
 	})
 	return _c
 }
 
-func (_c *MyRequestsRepository_GetMyDiscountRequests_Call) Return(_a0 []map[string]interface{}, _a1 error) *MyRequestsRepository_GetMyDiscountRequests_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MyRequestsRepository_GetMyDiscountRequests_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *MyRequestsRepository_GetMyDiscountRequests_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MyRequestsRepository_GetMyDiscountRequests_Call) RunAndReturn(run func(context.Context, int64) ([]map[string]interface{}, error)) *MyRequestsRepository_GetMyDiscountRequests_Call {
+func (_c *MyRequestsRepository_GetMyDiscountRequests_Call) RunAndReturn(run func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)) *MyRequestsRepository_GetMyDiscountRequests_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetMyExpenseRequests provides a mock function with given fields: ctx, userID
-func (_m *MyRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx, userID)
+// GetMyExpenseRequests provides a mock function with given fields: ctx, userID, limit, offset
+func (_m *MyRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID int64, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, userID, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMyExpenseRequests")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]map[string]interface{}, error)); ok {
-		return rf(ctx, userID)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, userID, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []map[string]interface{}); ok {
-		r0 = rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, userID, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) int); ok {
+		r1 = rf(ctx, userID, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int, int) error); ok {
+		r2 = rf(ctx, userID, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MyRequestsRepository_GetMyExpenseRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMyExpenseRequests'
@@ -204,55 +220,64 @@ type MyRequestsRepository_GetMyExpenseRequests_Call struct {
 // GetMyExpenseRequests is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID int64
-func (_e *MyRequestsRepository_Expecter) GetMyExpenseRequests(ctx interface{}, userID interface{}) *MyRequestsRepository_GetMyExpenseRequests_Call {
-	return &MyRequestsRepository_GetMyExpenseRequests_Call{Call: _e.mock.On("GetMyExpenseRequests", ctx, userID)}
+//   - limit int
+//   - offset int
+func (_e *MyRequestsRepository_Expecter) GetMyExpenseRequests(ctx interface{}, userID interface{}, limit interface{}, offset interface{}) *MyRequestsRepository_GetMyExpenseRequests_Call {
+	return &MyRequestsRepository_GetMyExpenseRequests_Call{Call: _e.mock.On("GetMyExpenseRequests", ctx, userID, limit, offset)}
 }
 
-func (_c *MyRequestsRepository_GetMyExpenseRequests_Call) Run(run func(ctx context.Context, userID int64)) *MyRequestsRepository_GetMyExpenseRequests_Call {
+func (_c *MyRequestsRepository_GetMyExpenseRequests_Call) Run(run func(ctx context.Context, userID int64, limit int, offset int)) *MyRequestsRepository_GetMyExpenseRequests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
 	})
 	return _c
 }
 
-func (_c *MyRequestsRepository_GetMyExpenseRequests_Call) Return(_a0 []map[string]interface{}, _a1 error) *MyRequestsRepository_GetMyExpenseRequests_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MyRequestsRepository_GetMyExpenseRequests_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *MyRequestsRepository_GetMyExpenseRequests_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MyRequestsRepository_GetMyExpenseRequests_Call) RunAndReturn(run func(context.Context, int64) ([]map[string]interface{}, error)) *MyRequestsRepository_GetMyExpenseRequests_Call {
+func (_c *MyRequestsRepository_GetMyExpenseRequests_Call) RunAndReturn(run func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)) *MyRequestsRepository_GetMyExpenseRequests_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetMyLeaveRequests provides a mock function with given fields: ctx, userID
-func (_m *MyRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID int64) ([]map[string]interface{}, error) {
-	ret := _m.Called(ctx, userID)
+// GetMyLeaveRequests provides a mock function with given fields: ctx, userID, limit, offset
+func (_m *MyRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID int64, limit int, offset int) ([]map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, userID, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetMyLeaveRequests")
 	}
 
 	var r0 []map[string]interface{}
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]map[string]interface{}, error)); ok {
-		return rf(ctx, userID)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)); ok {
+		return rf(ctx, userID, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int64) []map[string]interface{}); ok {
-		r0 = rf(ctx, userID)
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, userID, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]map[string]interface{})
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
-		r1 = rf(ctx, userID)
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int, int) int); ok {
+		r1 = rf(ctx, userID, limit, offset)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int, int) error); ok {
+		r2 = rf(ctx, userID, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MyRequestsRepository_GetMyLeaveRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMyLeaveRequests'
@@ -263,23 +288,112 @@ type MyRequestsRepository_GetMyLeaveRequests_Call struct {
 // GetMyLeaveRequests is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID int64
-func (_e *MyRequestsRepository_Expecter) GetMyLeaveRequests(ctx interface{}, userID interface{}) *MyRequestsRepository_GetMyLeaveRequests_Call {
-	return &MyRequestsRepository_GetMyLeaveRequests_Call{Call: _e.mock.On("GetMyLeaveRequests", ctx, userID)}
+//   - limit int
+//   - offset int
+func (_e *MyRequestsRepository_Expecter) GetMyLeaveRequests(ctx interface{}, userID interface{}, limit interface{}, offset interface{}) *MyRequestsRepository_GetMyLeaveRequests_Call {
+	return &MyRequestsRepository_GetMyLeaveRequests_Call{Call: _e.mock.On("GetMyLeaveRequests", ctx, userID, limit, offset)}
 }
 
-func (_c *MyRequestsRepository_GetMyLeaveRequests_Call) Run(run func(ctx context.Context, userID int64)) *MyRequestsRepository_GetMyLeaveRequests_Call {
+func (_c *MyRequestsRepository_GetMyLeaveRequests_Call) Run(run func(ctx context.Context, userID int64, limit int, offset int)) *MyRequestsRepository_GetMyLeaveRequests_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].(int64), args[2].(int), args[3].(int))
 	})
 	return _c
 }
 
-func (_c *MyRequestsRepository_GetMyLeaveRequests_Call) Return(_a0 []map[string]interface{}, _a1 error) *MyRequestsRepository_GetMyLeaveRequests_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MyRequestsRepository_GetMyLeaveRequests_Call) Return(_a0 []map[string]interface{}, _a1 int, _a2 error) *MyRequestsRepository_GetMyLeaveRequests_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MyRequestsRepository_GetMyLeaveRequests_Call) RunAndReturn(run func(context.Context, int64) ([]map[string]interface{}, error)) *MyRequestsRepository_GetMyLeaveRequests_Call {
+func (_c *MyRequestsRepository_GetMyLeaveRequests_Call) RunAndReturn(run func(context.Context, int64, int, int) ([]map[string]interface{}, int, error)) *MyRequestsRepository_GetMyLeaveRequests_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetPendingAllRequests provides a mock function with given fields: ctx, role, approverID, limit, offset
+func (_m *MyRequestsRepository) GetPendingAllRequests(ctx context.Context, role string, approverID int64, limit int, offset int) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, int, error) {
+	ret := _m.Called(ctx, role, approverID, limit, offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPendingAllRequests")
+	}
+
+	var r0 []map[string]interface{}
+	var r1 []map[string]interface{}
+	var r2 []map[string]interface{}
+	var r3 int
+	var r4 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int, int) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, int, error)); ok {
+		return rf(ctx, role, approverID, limit, offset)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, int, int) []map[string]interface{}); ok {
+		r0 = rf(ctx, role, approverID, limit, offset)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]map[string]interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, int64, int, int) []map[string]interface{}); ok {
+		r1 = rf(ctx, role, approverID, limit, offset)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]map[string]interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string, int64, int, int) []map[string]interface{}); ok {
+		r2 = rf(ctx, role, approverID, limit, offset)
+	} else {
+		if ret.Get(2) != nil {
+			r2 = ret.Get(2).([]map[string]interface{})
+		}
+	}
+
+	if rf, ok := ret.Get(3).(func(context.Context, string, int64, int, int) int); ok {
+		r3 = rf(ctx, role, approverID, limit, offset)
+	} else {
+		r3 = ret.Get(3).(int)
+	}
+
+	if rf, ok := ret.Get(4).(func(context.Context, string, int64, int, int) error); ok {
+		r4 = rf(ctx, role, approverID, limit, offset)
+	} else {
+		r4 = ret.Error(4)
+	}
+
+	return r0, r1, r2, r3, r4
+}
+
+// MyRequestsRepository_GetPendingAllRequests_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPendingAllRequests'
+type MyRequestsRepository_GetPendingAllRequests_Call struct {
+	*mock.Call
+}
+
+// GetPendingAllRequests is a helper method to define mock.On call
+//   - ctx context.Context
+//   - role string
+//   - approverID int64
+//   - limit int
+//   - offset int
+func (_e *MyRequestsRepository_Expecter) GetPendingAllRequests(ctx interface{}, role interface{}, approverID interface{}, limit interface{}, offset interface{}) *MyRequestsRepository_GetPendingAllRequests_Call {
+	return &MyRequestsRepository_GetPendingAllRequests_Call{Call: _e.mock.On("GetPendingAllRequests", ctx, role, approverID, limit, offset)}
+}
+
+func (_c *MyRequestsRepository_GetPendingAllRequests_Call) Run(run func(ctx context.Context, role string, approverID int64, limit int, offset int)) *MyRequestsRepository_GetPendingAllRequests_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(int64), args[3].(int), args[4].(int))
+	})
+	return _c
+}
+
+func (_c *MyRequestsRepository_GetPendingAllRequests_Call) Return(leaves []map[string]interface{}, expenses []map[string]interface{}, discounts []map[string]interface{}, total int, err error) *MyRequestsRepository_GetPendingAllRequests_Call {
+	_c.Call.Return(leaves, expenses, discounts, total, err)
+	return _c
+}
+
+func (_c *MyRequestsRepository_GetPendingAllRequests_Call) RunAndReturn(run func(context.Context, string, int64, int, int) ([]map[string]interface{}, []map[string]interface{}, []map[string]interface{}, int, error)) *MyRequestsRepository_GetPendingAllRequests_Call {
 	_c.Call.Return(run)
 	return _c
 }

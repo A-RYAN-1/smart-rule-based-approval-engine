@@ -24,20 +24,20 @@ const (
 		     approved_by_id=$2,
 		     approval_comment=$3
 		 WHERE id=$4`
-	expenseQueryGetPendingForManager = `SELECT er.id, u.name, er.amount, er.category, er.reason, er.created_at 
+	expenseQueryGetPendingForManager = `SELECT er.id, er.employee_id, u.name, er.amount, er.category, er.reason, er.created_at 
 		 FROM expense_requests er
 		 JOIN users u ON er.employee_id = u.id
 		 WHERE er.status='PENDING' AND u.manager_id=$1
 		 ORDER BY er.created_at DESC
 		 LIMIT $2 OFFSET $3`
-	expenseQueryGetPendingForAdmin = `SELECT er.id, u.name, er.amount, er.category, er.reason, er.created_at
+	expenseQueryGetPendingForAdmin = `SELECT er.id, er.employee_id, u.name, er.amount, er.category, er.reason, er.created_at
 		 FROM expense_requests er
 		 JOIN users u ON er.employee_id = u.id
 		 WHERE er.status='PENDING'
 		 ORDER BY er.created_at DESC
 		 LIMIT $1 OFFSET $2`
-	expenseQueryCancel             = `UPDATE expense_requests SET status='CANCELLED' WHERE id=$1`
-	expenseQueryGetPendingRequests = "SELECT id, created_at FROM expense_requests WHERE status='PENDING'"
+	expenseQueryCancel                 = `UPDATE expense_requests SET status='CANCELLED' WHERE id=$1`
+	expenseQueryGetPendingRequests     = "SELECT id, created_at FROM expense_requests WHERE status='PENDING'"
 	expenseQueryCountPendingForManager = `SELECT COUNT(*) FROM expense_requests er JOIN users u ON er.employee_id = u.id WHERE er.status='PENDING' AND u.manager_id=$1`
 	expenseQueryCountPendingForAdmin   = `SELECT COUNT(*) FROM expense_requests WHERE status='PENDING'`
 )
@@ -116,22 +116,28 @@ func (r *expenseRequestRepository) GetPendingForManager(ctx context.Context, man
 	var result []map[string]interface{}
 
 	for rows.Next() {
-		var id int64
-		var name, category string
-		var reason *string
-		var amount float64
-		var createdAt time.Time
+		var (
+			id         int64
+			employeeID int64
+			name       string
+			category   string
+			reason     *string
+			amount     float64
+			createdAt  time.Time
+		)
 
-		if err := rows.Scan(&id, &name, &amount, &category, &reason, &createdAt); err != nil {
+		if err := rows.Scan(&id, &employeeID, &name, &amount, &category, &reason, &createdAt); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
 			"id":         id,
+			"user_id":    employeeID,
 			"employee":   name,
 			"amount":     amount,
 			"category":   category,
 			"reason":     reason,
+			"status":     "PENDING",
 			"created_at": createdAt.Format(time.RFC3339),
 		})
 	}
@@ -159,22 +165,28 @@ func (r *expenseRequestRepository) GetPendingForAdmin(ctx context.Context, limit
 	var result []map[string]interface{}
 
 	for rows.Next() {
-		var id int64
-		var name, category string
-		var reason *string
-		var amount float64
-		var createdAt time.Time
+		var (
+			id         int64
+			employeeID int64
+			name       string
+			category   string
+			reason     *string
+			amount     float64
+			createdAt  time.Time
+		)
 
-		if err := rows.Scan(&id, &name, &amount, &category, &reason, &createdAt); err != nil {
+		if err := rows.Scan(&id, &employeeID, &name, &amount, &category, &reason, &createdAt); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
 
 		result = append(result, map[string]interface{}{
 			"id":         id,
+			"user_id":    employeeID,
 			"employee":   name,
 			"amount":     amount,
 			"category":   category,
 			"reason":     reason,
+			"status":     "PENDING",
 			"created_at": createdAt.Format(time.RFC3339),
 		})
 	}

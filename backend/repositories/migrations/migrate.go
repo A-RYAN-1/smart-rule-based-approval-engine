@@ -16,7 +16,7 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 )
 
-const migrationsDir = "migrations"
+const migrationsDir = "repositories/migrations"
 
 type Migration struct {
 	directoryName string

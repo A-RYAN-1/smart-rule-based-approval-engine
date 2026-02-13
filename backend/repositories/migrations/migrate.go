@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,7 +17,15 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 )
 
-const migrationsDir = "repositories/migrations"
+var migrationsDir string
+
+func init() {
+	// Get the directory where this file is located
+	_, file, _, _ := runtime.Caller(0)
+	dir := filepath.Dir(file)
+	migrationsDir = dir
+	log.Printf("Migrations directory: %s", migrationsDir)
+}
 
 type Migration struct {
 	directoryName string
@@ -114,13 +123,18 @@ func ensureSchemaTable() {
 
 func readUpSQLFiles() []string {
 	log.Println("in read")
-	entries, _ := os.ReadDir(migrationsDir)
+	log.Printf("Reading migrations from: %s", migrationsDir)
+	entries, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		log.Printf("Error reading migrations directory: %v", err)
+		return []string{}
+	}
 	var files []string
 	log.Println("after read")
 
 	for _, e := range entries {
 		if strings.HasSuffix(e.Name(), ".up.sql") {
-			files = append(files, migrationsDir+"/"+e.Name())
+			files = append(files, filepath.Join(migrationsDir, e.Name()))
 		}
 	}
 	log.Println("files", files)

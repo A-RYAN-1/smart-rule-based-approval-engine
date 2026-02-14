@@ -57,15 +57,6 @@ func Register(
 		})
 	})
 
-	// Auth routes at root level (for frontend compatibility)
-	// Some frontends may call /auth/login instead of /api/auth/login
-	rootAuthGroup := router.Group("/auth")
-	{
-		rootAuthGroup.POST("/register", authHandler.Register)
-		rootAuthGroup.POST("/login", authHandler.Login)
-		rootAuthGroup.POST("/logout", authHandler.Logout)
-	}
-
 	// Public routes
 	public := router.Group("/api")
 	{

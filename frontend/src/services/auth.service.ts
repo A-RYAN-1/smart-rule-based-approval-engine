@@ -13,7 +13,7 @@ interface RegisterResponse {
 
 export const authService = {
     async login(email: string, password: string): Promise<User> {
-        const response = await api.post<any>('auth/login', { email, password });
+        const response = await api.post<any>('/auth/login', { email, password });
         const responseData = response.data.data || response.data;
 
         // Check for user object in response (standardized backend)
@@ -34,16 +34,16 @@ export const authService = {
     },
 
     async register(name: string, email: string, password: string): Promise<User> {
-        const response = await api.post<RegisterResponse>('auth/register', { name, email, password });
+        const response = await api.post<RegisterResponse>('/auth/register', { name, email, password });
         return response.data.user;
     },
 
     async logout(): Promise<void> {
-        await api.post('auth/logout');
+        await api.post('/auth/logout');
     },
 
     async getUserInfo(): Promise<User> {
-        const response = await api.get<any>('me');
+        const response = await api.get<any>('/me');
         const data = response.data.data || response.data;
         return {
             id: data.id,

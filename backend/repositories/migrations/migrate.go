@@ -20,9 +20,12 @@ import (
 var migrationsDir string
 
 func init() {
-	// Get the directory where this file is located
+	// Get the directory where this file is located, then go up to backend directory
 	_, file, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(file)
+	// Navigate from repositories/migrations to backend/migrations
+	// repositories/migrations -> repositories -> backend -> migrations
+	dir = filepath.Join(filepath.Dir(filepath.Dir(dir)), "migrations")
 	migrationsDir = dir
 	log.Printf("Migrations directory: %s", migrationsDir)
 }

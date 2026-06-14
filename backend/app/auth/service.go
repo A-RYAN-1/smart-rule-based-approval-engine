@@ -105,7 +105,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, name, email, password st
 
 	userID, err := s.userRepo.Create(ctx, tx, user)
 	if err != nil {
-		return apperrors.ErrInsertFailed
+		log.Printf("CREATE USER FAILED: %+v\n", err)
+		return err
 	}
 
 	log.Println("User inserted successfully, userID:", userID)

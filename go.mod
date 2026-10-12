@@ -2,6 +2,8 @@ module github.com/A-RYAN-1/smart-rule-based-approval-engine
 
 go 1.26.0
 
+toolchain go1.26.9
+
 require github.com/ankita-advitot/rule_based_approval_engine v0.0.0
 
 require (

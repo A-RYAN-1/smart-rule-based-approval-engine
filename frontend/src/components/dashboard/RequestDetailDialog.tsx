@@ -10,12 +10,13 @@ import { StatusBadge, RequestTypeBadge } from '@/components/ui/status-badge';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { TypedRequest } from '@/types';
 import { CalendarDays, Receipt, Percent, Clock, User, MessageSquare, Info } from 'lucide-react';
 
 interface RequestDetailDialogProps {
     isOpen: boolean;
     onClose: () => void;
-    request: any;
+    request: TypedRequest | null;
 }
 
 export function RequestDetailDialog({ isOpen, onClose, request }: RequestDetailDialogProps) {

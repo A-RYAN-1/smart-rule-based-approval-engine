@@ -3,6 +3,7 @@ package tests
 import (
 	"testing"
 
+	"github.com/ankita-advitot/rule_based_approval_engine/pkg/apperrors"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,6 +25,7 @@ func TestAuthUtils_Password(t *testing.T) {
 }
 
 func TestAuthUtils_JWT(t *testing.T) {
+	utils.SetJWTSecret("test-secret-that-is-at-least-32-bytes-long")
 	userID := int64(123)
 	role := "ADMIN"
 
@@ -41,4 +43,17 @@ func TestAuthUtils_JWT(t *testing.T) {
 	// Invalid token
 	_, err = utils.ValidateToken("invalid.token.string")
 	assert.Error(t, err)
+
+	// A token signed with another key is rejected
+	utils.SetJWTSecret("a-different-secret-also-32-bytes-long!!")
+	_, err = utils.ValidateToken(token)
+	assert.Error(t, err)
+}
+
+func TestAuthUtils_JWTWithoutSecret(t *testing.T) {
+	utils.SetJWTSecret("")
+	_, err := utils.GenerateToken(1, "ADMIN")
+	assert.ErrorIs(t, err, apperrors.ErrJWTSecretNotSet)
+	_, err = utils.ValidateToken("any")
+	assert.ErrorIs(t, err, apperrors.ErrJWTSecretNotSet)
 }

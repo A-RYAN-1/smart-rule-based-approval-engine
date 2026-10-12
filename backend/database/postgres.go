@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/ankita-advitot/rule_based_approval_engine/config"
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
@@ -63,27 +64,26 @@ func (t *pgxTx) Exec(ctx context.Context, sql string, args ...any) (pgconn.Comma
 	return t.tx.Exec(ctx, sql, args...)
 }
 
-func Connect(cfg *config.Config) {
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s&connect_timeout=10&application_name=approval-engine",
-		cfg.DB.User,
-		cfg.DB.Password,
-		cfg.DB.Host,
-		cfg.DB.Port,
-		cfg.DB.Name,
-		cfg.DB.SSLMode,
-	)
-
-	pool, err := pgxpool.New(context.Background(), dsn)
+// Connect opens the connection pool and checks it with a ping.
+func Connect(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
+	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
+		return nil, fmt.Errorf("DATABASE_URL is not a valid connection string: %w", err)
 	}
+	poolCfg.ConnConfig.ConnectTimeout = 10 * time.Second
+	poolCfg.ConnConfig.RuntimeParams["application_name"] = "approval-engine"
+	poolCfg.MaxConns = 5
 
-	err = pool.Ping(context.Background())
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
-		log.Fatalf("Database ping failed: %v\n", err)
+		return nil, fmt.Errorf("unable to create database pool: %w", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
 	DB = &pgxDB{pool: pool}
-	log.Println(" PostgreSQL connected")
+	log.Println("PostgreSQL connected")
+	return pool, nil
 }

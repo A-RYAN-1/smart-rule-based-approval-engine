@@ -40,17 +40,6 @@ export default function ReportsPage() {
   } = useAdmin();
 
   // Debug: Log all query states
-  console.log('[ReportsPage] Loading states:', {
-    isLoadingStatusDistribution,
-    isLoadingRequestsByType,
-    isLoadingRules,
-    statusDistribution: statusDistribution ? 'exists' : 'null',
-    requestsByType: requestsByType ? `array[${requestsByType.length}]` : 'null',
-    rules: rules ? `array[${rules.length}]` : 'null'
-  });
-  console.log('[ReportsPage] statusDistribution data:', statusDistribution);
-  console.log('[ReportsPage] requestsByType data:', requestsByType);
-  console.log('[ReportsPage] rules data:', rules);
 
   // Only admins can access
   if (user?.role !== 'admin') {
@@ -59,7 +48,6 @@ export default function ReportsPage() {
 
   const isLoading = isLoadingStatusDistribution || isLoadingRequestsByType || isLoadingRules;
 
-  console.log('[ReportsPage] Is Loading:', isLoading);
 
   // Derived Stats Logic
   const autoApprovedTotal = requestsByType?.reduce((acc, curr) => acc + (curr.auto_approved || 0), 0) || 0;
@@ -80,14 +68,6 @@ export default function ReportsPage() {
     ? Math.round((totalAutoProcessed / processedTotal) * 100)
     : 0;
 
-  console.log('[ReportsPage] Calculated stats:', {
-    autoApprovedTotal,
-    totalApproved,
-    manualApproved,
-    totalRequests,
-    pendingRequests,
-    autoProcessingRate
-  });
 
   // Status distribution data for Pie Chart
   const statusData = [
@@ -116,7 +96,6 @@ export default function ReportsPage() {
   const activeRules = rules?.filter(r => r.isActive).length || 0;
 
   if (isLoading) {
-    console.log('[ReportsPage] Showing loading spinner');
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -126,7 +105,6 @@ export default function ReportsPage() {
     );
   }
 
-  console.log('[ReportsPage] Rendering content page');
   return (
     <AppLayout>
       <div className="space-y-6">

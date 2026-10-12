@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { leaveService } from '@/services/leave.service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,8 +36,8 @@ export function useLeaves(params?: { myLimit?: number; myOffset?: number; pendin
             queryClient.invalidateQueries({ queryKey: ['leaves', 'my'] });
             queryClient.invalidateQueries({ queryKey: ['balances'] });
         },
-        onError: (error: any) => {
-            const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Failed to request leave';
+        onError: (error: unknown) => {
+            const errorMessage = apiErrorMessage(error, 'Failed to request leave');
             // Check for overlapping request error
             if (errorMessage.toLowerCase().includes('overlap') || errorMessage.toLowerCase().includes('conflict')) {
                 toast.error('Overlapping Leave Request', {
@@ -55,7 +56,7 @@ export function useLeaves(params?: { myLimit?: number; myOffset?: number; pendin
             queryClient.invalidateQueries({ queryKey: ['leaves', 'my'] });
             queryClient.invalidateQueries({ queryKey: ['balances'] });
         },
-        onError: (error: any) => {
+        onError: () => {
             toast.error('Failed to cancel leave');
         }
     });

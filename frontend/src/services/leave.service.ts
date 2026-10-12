@@ -1,5 +1,6 @@
 
-import api from '@/lib/api';
+import api, { unwrap, RawPage, RawRecord } from '@/lib/api';
+import { RawBalances } from '@/services/balance.service';
 import { LeaveRequest, LeaveBalance } from '@/types';
 import { transformLeaveRequest } from '@/lib/transformers';
 
@@ -13,8 +14,8 @@ interface CreateLeaveRequestPayload {
 
 export const leaveService = {
     async getMyLeaves(limit = 10, offset = 0): Promise<{ requests: LeaveRequest[]; total: number }> {
-        const response = await api.get<any>(`/leaves/my?limit=${limit}&offset=${offset}`);
-        const result = response.data.data || response.data;
+        const response = await api.get<unknown>(`/leaves/my?limit=${limit}&offset=${offset}`);
+        const result = unwrap<RawPage>(response.data);
         const requests = (result.requests || []).map(transformLeaveRequest);
         return { requests, total: result.total || 0 };
     },
@@ -26,8 +27,8 @@ export const leaveService = {
             leave_type: payload.leaveType,
             reason: payload.reason,
         };
-        const response = await api.post<any>('/leaves/request', apiPayload);
-        return transformLeaveRequest(response.data.data || response.data);
+        const response = await api.post<unknown>('/leaves/request', apiPayload);
+        return transformLeaveRequest(unwrap<RawRecord>(response.data));
     },
 
     async cancelLeave(id: number): Promise<void> {
@@ -36,8 +37,8 @@ export const leaveService = {
 
     // Manager/Admin only
     async getPendingLeaves(limit = 10, offset = 0): Promise<{ requests: LeaveRequest[]; total: number }> {
-        const response = await api.get<any>(`/leaves/pending?limit=${limit}&offset=${offset}`);
-        const result = response.data.data || response.data;
+        const response = await api.get<unknown>(`/leaves/pending?limit=${limit}&offset=${offset}`);
+        const result = unwrap<RawPage>(response.data);
         const requests = (result.requests || []).map(transformLeaveRequest);
         return { requests, total: result.total || 0 };
     },
@@ -51,8 +52,8 @@ export const leaveService = {
     },
 
     async getBalances(): Promise<LeaveBalance[]> {
-        const response = await api.get<any>('/balances');
-        const data = response.data.data || response.data; // { discount: {...}, expense: {...}, leave: {...} }
+        const response = await api.get<unknown>('/balances');
+        const data = unwrap<RawBalances>(response.data);
 
         // Transform object to array expected by UI
         // UI expects LeaveBalance[]: { leaveType: 'EARN', balance: 20, used: 10, total: 30 }

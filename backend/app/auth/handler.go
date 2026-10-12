@@ -7,6 +7,7 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/apperrors"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/response"
+	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,15 +53,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(
-		"access_token",
-		token,
-		3600, // 1 hour
-		"/",
-		"",
-		false,
-		true,
-	)
+	utils.SetAuthCookie(c, token, 3600) // 1 hour
 
 	// Fetch user details to return in response
 	user, err := h.authService.GetUserByEmail(ctx, req.Email)
@@ -105,7 +98,7 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	c.SetCookie("access_token", "", -1, "/", "", false, true)
+	utils.SetAuthCookie(c, "", -1)
 	response.Success(c, "logged out successfully", nil)
 }
 

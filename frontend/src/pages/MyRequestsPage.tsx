@@ -40,7 +40,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Eye, X, Calendar, DollarSign, Percent, Info } from 'lucide-react';
-import { RequestType, RequestStatus } from '@/types';
+import { RequestType, RequestStatus, TypedRequest } from '@/types';
 
 export default function MyRequestsPage() {
   const { user } = useAuth();
@@ -66,7 +66,7 @@ export default function MyRequestsPage() {
   const myAllData = myAllQuery.data;
 
   const { toast } = useToast();
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TypedRequest | null>(null);
 
   const [confirmCancel, setConfirmCancel] = useState<{
     type: RequestType;
@@ -75,7 +75,7 @@ export default function MyRequestsPage() {
 
 
   const filteredRequests = useMemo(() => {
-    let baseRequests: any[] = [];
+    let baseRequests: TypedRequest[] = [];
     if (activeTab === 'all') {
       baseRequests = [
         ...(myAllData?.leaves || []).map(r => ({ ...r, type: 'leave' as const })),
@@ -118,7 +118,7 @@ export default function MyRequestsPage() {
     }
   };
 
-  const getRequestDetails = (request: any) => {
+  const getRequestDetails = (request: TypedRequest) => {
     if (request.type === 'leave') {
       return `${request.leaveType} • ${format(new Date(request.fromDate), 'MMM d')} - ${format(new Date(request.toDate), 'MMM d, yyyy')}`;
     } else if (request.type === 'expense') {
@@ -196,7 +196,7 @@ export default function MyRequestsPage() {
           <Card className="border-none shadow-none bg-transparent">
             <CardContent className="p-0">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as any); setStatusFilter('all'); setCurrentPage(1); }} className="w-full lg:w-auto">
+                <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as 'all' | RequestType); setStatusFilter('all'); setCurrentPage(1); }} className="w-full lg:w-auto">
                   <TabsList className="bg-muted/50 p-1 h-11 border border-border/50">
                     <TabsTrigger value="all" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">All Types</TabsTrigger>
                     <TabsTrigger value="leave" className="px-6 data-[state=active]:bg-background data-[state=active]:shadow-sm">Leaves</TabsTrigger>
@@ -207,7 +207,7 @@ export default function MyRequestsPage() {
 
                 <div className="flex flex-col gap-2">
                   {/* <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-1">Status Filter</p> */}
-                  <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }} className="w-full lg:w-auto">
+                  <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v as 'all' | RequestStatus); setCurrentPage(1); }} className="w-full lg:w-auto">
                     <TabsList className="bg-muted/50 p-1 h-11 border border-border/50">
                       <TabsTrigger value="all" className="px-5 data-[state=active]:bg-background data-[state=active]:shadow-sm">All Status</TabsTrigger>
                       <TabsTrigger value="pending" className="px-5 data-[state=active]:bg-background data-[state=active]:shadow-sm">Pending</TabsTrigger>

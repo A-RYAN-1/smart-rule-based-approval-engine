@@ -1,5 +1,13 @@
-import api from '@/lib/api';
-import { User } from '@/types';
+import api, { unwrap } from '@/lib/api';
+import { User, UserRole } from '@/types';
+
+/** The user object the backend returns (role in upper case). */
+interface RawUser {
+    id?: number;
+    name?: string;
+    email?: string;
+    role?: string;
+}
 
 interface LoginResponse {
     message: string;
@@ -13,11 +21,11 @@ interface RegisterResponse {
 
 export const authService = {
     async login(email: string, password: string): Promise<User> {
-        const response = await api.post<any>('/auth/login', { email, password });
-        const responseData = response.data.data || response.data;
+        const response = await api.post<unknown>('/auth/login', { email, password });
+        const responseData = unwrap<RawUser & { user?: RawUser }>(response.data);
 
         // Check for user object in response (standardized backend)
-        const userData = responseData.user || responseData;
+        const userData: RawUser = responseData.user || responseData;
 
         if (!userData.role) {
             throw new Error('Invalid login response: Missing role');
@@ -27,7 +35,7 @@ export const authService = {
             id: userData.id || 0,
             name: userData.name || email.split('@')[0],
             email: userData.email || email,
-            role: userData.role.toLowerCase() as any,
+            role: userData.role.toLowerCase() as UserRole,
         };
 
         return user;
@@ -43,13 +51,13 @@ export const authService = {
     },
 
     async getUserInfo(): Promise<User> {
-        const response = await api.get<any>('/me');
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>('/me');
+        const data = unwrap<Required<RawUser>>(response.data);
         return {
             id: data.id,
             name: data.name,
             email: data.email,
-            role: data.role.toLowerCase() as any,
+            role: data.role.toLowerCase() as UserRole,
         };
     }
 };

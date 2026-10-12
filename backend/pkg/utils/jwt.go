@@ -7,7 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("super-secret-key")
+var jwtSecret []byte
+
+// SetJWTSecret sets the signing key; main calls it once with JWT_SECRET
+// from the config. Tokens cannot be created or verified before that.
+func SetJWTSecret(secret string) {
+	jwtSecret = []byte(secret)
+}
 
 type JWTClaims struct {
 	UserID int64  `json:"user_id"`
@@ -16,6 +22,9 @@ type JWTClaims struct {
 }
 
 func GenerateToken(userID int64, role string) (string, error) {
+	if len(jwtSecret) == 0 {
+		return "", apperrors.ErrJWTSecretNotSet
+	}
 	claims := JWTClaims{
 		UserID: userID,
 		Role:   role,
@@ -31,6 +40,9 @@ func GenerateToken(userID int64, role string) (string, error) {
 }
 
 func ValidateToken(tokenString string) (*JWTClaims, error) {
+	if len(jwtSecret) == 0 {
+		return nil, apperrors.ErrJWTSecretNotSet
+	}
 
 	token, err := jwt.ParseWithClaims(
 		tokenString,

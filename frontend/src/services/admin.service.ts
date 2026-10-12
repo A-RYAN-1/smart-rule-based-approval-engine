@@ -1,17 +1,17 @@
-import api from '@/lib/api';
-import { Holiday, ApprovalRule, StatusDistribution, RequestTypeReport, LeaveRequest, ExpenseRequest, DiscountRequest } from '@/types';
+import api, { unwrap, RawAllRequests, RawRecord } from '@/lib/api';
+import { Holiday, ApprovalRule, StatusDistribution, RequestTypeReport, LeaveRequest, ExpenseRequest, DiscountRequest, DashboardSummary } from '@/types';
 import { transformHoliday, transformApprovalRule, transformLeaveRequest, transformExpenseRequest, transformDiscountRequest } from '@/lib/transformers';
 
 export const adminService = {
     // Holidays
     async getHolidays(limit = 10, offset = 0): Promise<Holiday[]> {
-        const response = await api.get<any>(`/admin/holidays?limit=${limit}&offset=${offset}`);
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>(`/admin/holidays?limit=${limit}&offset=${offset}`);
+        const data = unwrap<RawRecord[]>(response.data);
         return Array.isArray(data) ? data.map(transformHoliday) : [];
     },
 
     async addHoliday(payload: { date: string; description: string }): Promise<void> {
-        await api.post<any>('/admin/holidays', payload);
+        await api.post<unknown>('/admin/holidays', payload);
     },
 
     async deleteHoliday(id: number): Promise<void> {
@@ -20,8 +20,8 @@ export const adminService = {
 
     // Rules
     async getRules(limit = 10, offset = 0): Promise<ApprovalRule[]> {
-        const response = await api.get<any>(`/admin/rules?limit=${limit}&offset=${offset}`);
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>(`/admin/rules?limit=${limit}&offset=${offset}`);
+        const data = unwrap<RawRecord[]>(response.data);
         return Array.isArray(data) ? data.map(transformApprovalRule) : [];
     },
 
@@ -52,19 +52,19 @@ export const adminService = {
     },
 
     // Reports
-    async getDashboardSummary(): Promise<any> {
-        const response = await api.get<any>('/reports/dashboard');
-        return response.data.data || response.data;
+    async getDashboardSummary(): Promise<DashboardSummary> {
+        const response = await api.get<unknown>('/reports/dashboard');
+        return unwrap<DashboardSummary>(response.data);
     },
 
     async getStatusDistribution(): Promise<StatusDistribution> {
-        const response = await api.get<any>('/admin/reports/request-status-distribution');
-        return response.data.data || response.data;
+        const response = await api.get<unknown>('/admin/reports/request-status-distribution');
+        return unwrap<StatusDistribution>(response.data);
     },
 
     async getRequestsByType(): Promise<RequestTypeReport[]> {
-        const response = await api.get<any>('/admin/reports/requests-by-type');
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>('/admin/reports/requests-by-type');
+        const data = unwrap<RequestTypeReport[]>(response.data);
         return Array.isArray(data) ? data : [];
     },
 
@@ -79,8 +79,8 @@ export const adminService = {
         discounts: DiscountRequest[];
         total: number;
     }> {
-        const response = await api.get<any>(`/pending/all?limit=${limit}&offset=${offset}`);
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>(`/pending/all?limit=${limit}&offset=${offset}`);
+        const data = unwrap<RawAllRequests>(response.data);
         return {
             leaves: (data.leave_request || []).map(transformLeaveRequest),
             expenses: (data.expense_request || []).map(transformExpenseRequest),
@@ -95,8 +95,8 @@ export const adminService = {
         discounts: DiscountRequest[];
         total: number;
     }> {
-        const response = await api.get<any>(`/my-requests/all?limit=${limit}&offset=${offset}`);
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>(`/my-requests/all?limit=${limit}&offset=${offset}`);
+        const data = unwrap<RawAllRequests>(response.data);
         return {
             leaves: (data.leave_request || []).map(transformLeaveRequest),
             expenses: (data.expense_request || []).map(transformExpenseRequest),

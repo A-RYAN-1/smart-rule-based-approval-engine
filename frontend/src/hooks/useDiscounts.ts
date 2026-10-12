@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { discountService } from '@/services/discount.service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,8 +28,8 @@ export function useDiscounts(params?: { myLimit?: number; myOffset?: number; pen
             toast.success('Discount requested successfully');
             queryClient.invalidateQueries({ queryKey: ['discounts', 'my'] });
         },
-        onError: (error: any) => {
-            toast.error(error.response?.data?.error || 'Failed to request discount');
+        onError: (error: unknown) => {
+            toast.error(apiErrorMessage(error, 'Failed to request discount'));
         },
     });
 

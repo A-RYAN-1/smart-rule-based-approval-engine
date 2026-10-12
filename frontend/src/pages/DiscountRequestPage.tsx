@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/lib/api';
 import { useState, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,14 +40,11 @@ export default function DiscountRequestPage() {
     // Look for discount rules and extract conditions
     const discountRules = rules.filter(r => r.requestType.toUpperCase() === 'DISCOUNT' && r.isActive);
     
-    // Parse conditions to find thresholds
-    // Rules typically have conditions like: { "discount_percentage": { "<=": 10 } }
+    // Discount rules look like { "max_percent": 10 } with action AUTO_APPROVE
     for (const rule of discountRules) {
-      if (rule.action === 'auto_approve' && rule.condition?.discount_percentage) {
-        const condition = rule.condition.discount_percentage;
-        if (condition['<=']) {
-          defaults.autoApproveThreshold = Math.max(defaults.autoApproveThreshold, condition['<=']);
-        }
+      const maxPercent = typeof rule.condition === 'object' ? rule.condition.max_percent : undefined;
+      if (rule.action.toUpperCase() === 'AUTO_APPROVE' && typeof maxPercent === 'number') {
+        defaults.autoApproveThreshold = Math.max(defaults.autoApproveThreshold, maxPercent);
       }
     }
 
@@ -133,9 +131,8 @@ export default function DiscountRequestPage() {
       // Reset form
       setPercentage([5]);
       setReason('');
-    } catch (error: any) {
-      const serverMessage = error.response?.data?.message || error.response?.data?.error || "Check your input and try again.";
-      console.error('DISCOUNT ERROR:', error.response?.data || error);
+    } catch (error: unknown) {
+      const serverMessage = apiErrorMessage(error, "Check your input and try again.");
 
       toast({
         variant: "destructive",

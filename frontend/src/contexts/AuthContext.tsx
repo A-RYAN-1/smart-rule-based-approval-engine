@@ -53,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.clear();
       
       const user = await authService.login(email, password);
-      console.log('AuthContext: Setting user:', user);
       setUser(user);
       localStorage.setItem('approval_engine_user', JSON.stringify(user));
       toast.success('Logged in successfully');

@@ -1,189 +1,134 @@
+// Package migrations applies the SQL files embedded from backend/migrations,
+// each in its own transaction, and records them in schema_migrations.
 package migrations
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/ankita-advitot/rule_based_approval_engine/database"
-	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
+	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
+	migrationfiles "github.com/ankita-advitot/rule_based_approval_engine/migrations"
 )
 
-var migrationsDir string
-
-func init() {
-	// Get the directory where this file is located, then go up to backend directory
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	// Navigate from repositories/migrations to backend/migrations
-	// repositories/migrations -> repositories -> backend -> migrations
-	dir = filepath.Join(filepath.Dir(filepath.Dir(dir)), "migrations")
-	migrationsDir = dir
-	log.Printf("Migrations directory: %s", migrationsDir)
-}
-
-type Migration struct {
-	directoryName string
-}
-
-func createMigration() {
-	if len(os.Args) < 4 {
-		log.Println("migration name required")
-		return
+// HandleMigrateCommand runs `server migrate up` or `server migrate create <name>`.
+func HandleMigrateCommand(ctx context.Context, db interfaces.DB, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: server migrate up | server migrate create <name>")
 	}
-
-	m := Migration{directoryName: migrationsDir}
-	err := m.CreateMigrationFile(os.Args[3])
-	if err != nil {
-		log.Println(err)
+	switch args[0] {
+	case "up":
+		return Up(ctx, db)
+	case "create":
+		if len(args) < 2 || strings.TrimSpace(args[1]) == "" {
+			return fmt.Errorf("usage: server migrate create <name>")
+		}
+		return createFiles("migrations", args[1])
+	default:
+		return fmt.Errorf("unknown migrate command %q (use up or create)", args[0])
 	}
 }
 
-func (m Migration) CreateMigrationFile(name string) error {
-	if name == "" {
-		return errors.New("filename is not provided")
-	}
-
+// createFiles writes an empty up/down pair into dir (run from backend/).
+func createFiles(dir, name string) error {
 	ts := time.Now().Unix()
-	up := fmt.Sprintf("%s/%d_%s.up.sql", m.directoryName, ts, name)
-	down := fmt.Sprintf("%s/%d_%s.down.sql", m.directoryName, ts, name)
-
-	os.MkdirAll(m.directoryName, 0755)
-	os.Create(up)
-	os.Create(down)
-
-	log.Println("created", up)
-	log.Println("created", down)
+	for _, suffix := range []string{"up", "down"} {
+		path := filepath.Join(dir, fmt.Sprintf("%d_%s.%s.sql", ts, name, suffix))
+		if err := os.WriteFile(path, nil, 0o644); err != nil {
+			return err
+		}
+		log.Println("created", path)
+	}
 	return nil
 }
 
-func HandleMigrateCommand() {
-	if len(os.Args) < 3 {
-		log.Println("migrate command required (create | up)")
-		return
-	}
-	log.Println("in handlemigrate", os.Args[2])
-	switch os.Args[2] {
-	case "create":
-		createMigration()
-	case "up":
-		log.Println("calling to run")
-		RunMigrationsUp()
-	default:
-		log.Println("unknown migrate command")
-	}
-}
-func RunMigrationsUp() {
-	if database.DB == nil {
-		log.Fatal("Database connection not initialized")
-	}
-	log.Println("in run")
-
-	ensureSchemaTable()
-	log.Println("calling to read")
-	files := readUpSQLFiles()
-
-	for _, file := range files {
-		version := extractVersion(file)
-
-		if isApplied(version) {
-			continue
-		}
-
-		log.Println("applying", file)
-		err := executeSQLFile(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		markAsApplied(version)
-	}
-}
-
-func ensureSchemaTable() {
-	log.Println("in ensure")
-
-	_, err := database.DB.Exec(context.Background(), `
+// Up applies every embedded *.up.sql file that is not applied yet.
+func Up(ctx context.Context, db interfaces.DB) error {
+	if _, err := db.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			version BIGINT PRIMARY KEY,
 			applied_at TIMESTAMP NOT NULL
-		)
-	`)
-	log.Println("after query")
-
-	if err != nil {
-		log.Fatalf("Error ensuring schema table: %v", err)
+		)`); err != nil {
+		return fmt.Errorf("creating schema_migrations: %w", err)
 	}
-}
 
-func readUpSQLFiles() []string {
-	log.Println("in read")
-	log.Printf("Reading migrations from: %s", migrationsDir)
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		log.Printf("Error reading migrations directory: %v", err)
-		return []string{}
-	}
-	var files []string
-	log.Println("after read")
-
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".up.sql") {
-			files = append(files, filepath.Join(migrationsDir, e.Name()))
-		}
-	}
-	log.Println("files", files)
-	sort.Strings(files)
-	return files
-}
-
-func extractVersion(path string) int64 {
-	base := filepath.Base(path)
-	parts := strings.Split(base, "_")
-	v, _ := strconv.ParseInt(parts[0], 10, 64)
-	return v
-}
-
-func executeSQLFile(path string) error {
-	log.Println("in execute")
-	sqlBytes, err := os.ReadFile(path)
+	files, err := upFiles()
 	if err != nil {
 		return err
 	}
-	log.Println("after read")
 
-	_, err = database.DB.Exec(context.Background(), string(sqlBytes))
-	log.Println("after exec", err)
-	return utils.MapPgError(err)
-}
+	for _, file := range files {
+		version, err := versionOf(file)
+		if err != nil {
+			return err
+		}
+		var applied bool
+		if err := db.QueryRow(ctx,
+			"SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)", version,
+		).Scan(&applied); err != nil {
+			return fmt.Errorf("checking migration %s: %w", file, err)
+		}
+		if applied {
+			continue
+		}
 
-func isApplied(version int64) bool {
-	var v int64
-	err := database.DB.QueryRow(
-		context.Background(),
-		"SELECT version FROM schema_migrations WHERE version=$1",
-		version,
-	).Scan(&v)
-	return err == nil
-}
-
-func markAsApplied(version int64) {
-	log.Println("in mark")
-	_, err := database.DB.Exec(
-		context.Background(),
-		"INSERT INTO schema_migrations (version, applied_at) VALUES ($1, NOW())",
-		version,
-	)
-	if err != nil {
-		log.Printf("Warning: Failed to mark migration %d as applied: %v", version, err)
+		sql, err := fs.ReadFile(migrationfiles.FS, file)
+		if err != nil {
+			return err
+		}
+		if err := apply(ctx, db, version, string(sql)); err != nil {
+			return fmt.Errorf("applying migration %s: %w", file, err)
+		}
+		log.Println("applied migration", file)
 	}
-	log.Println("after mark")
+	return nil
+}
+
+func apply(ctx context.Context, db interfaces.DB, version int64, sql string) error {
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, sql); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx,
+		"INSERT INTO schema_migrations (version, applied_at) VALUES ($1, NOW())", version,
+	); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func upFiles() ([]string, error) {
+	entries, err := fs.ReadDir(migrationfiles.FS, ".")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".up.sql") {
+			files = append(files, e.Name())
+		}
+	}
+	sort.Strings(files)
+	return files, nil
+}
+
+func versionOf(file string) (int64, error) {
+	prefix, _, _ := strings.Cut(file, "_")
+	v, err := strconv.ParseInt(prefix, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("migration %s: name must start with a unix timestamp", file)
+	}
+	return v, nil
 }

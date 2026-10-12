@@ -31,14 +31,14 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CheckCircle2, XCircle, Eye, Clock, Calendar, DollarSign, Percent, User } from 'lucide-react';
-import { RequestType } from '@/types';
+import { RequestType, TypedRequest } from '@/types';
 import { Navigate } from 'react-router-dom';
 
 export default function PendingApprovalsPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'all' | RequestType>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TypedRequest | null>(null);
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
   const [reason, setReason] = useState('');
   const pageSize = 10;
@@ -61,14 +61,6 @@ export default function PendingApprovalsPage() {
 
   const { toast } = useToast();
 
-  // Debug logging
-  console.log('[PendingApprovalsPage] pendingAllData:', pendingAllData);
-  console.log('[PendingApprovalsPage] dashboardSummary:', dashboardSummary);
-
-  // Only managers and admins can access
-  if (user?.role === 'employee') {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   // Calculate pending counts from the fetched data
   // For admins: use dashboardSummary if available
@@ -118,6 +110,11 @@ export default function PendingApprovalsPage() {
 
   const totalPages = Math.ceil(currentTotal / pageSize);
 
+  // Only managers and admins can access (after every hook, so hooks always run in the same order)
+  if (user?.role === 'employee') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const handleAction = async () => {
     if (!selectedRequest || !actionType) return;
 
@@ -154,7 +151,7 @@ export default function PendingApprovalsPage() {
     }
   };
 
-  const getRequestDetails = (request: any) => {
+  const getRequestDetails = (request: TypedRequest) => {
     if (request.type === 'leave') {
       return `${request.leaveType} • ${format(new Date(request.fromDate), 'MMM d')} - ${format(new Date(request.toDate), 'MMM d')}`;
     } else if (request.type === 'expense') {
@@ -227,7 +224,7 @@ export default function PendingApprovalsPage() {
                 <CardDescription>Click on a request to view details and take action</CardDescription>
               </div>
               <Tabs value={activeTab} onValueChange={(v) => {
-                setActiveTab(v as any);
+                setActiveTab(v as 'all' | RequestType);
                 setCurrentPage(1);
               }}>
                 <TabsList>

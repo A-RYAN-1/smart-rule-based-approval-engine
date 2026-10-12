@@ -1,3 +1,4 @@
+import type { TypedRequest } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLeaves } from '@/hooks/useLeaves';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -47,7 +48,7 @@ const COLORS = {
   cancelled: 'hsl(215, 16%, 47%)',
 };
 
-const getRequestDetails = (request: any) => {
+const getRequestDetails = (request: TypedRequest) => {
   if (request.type === 'leave') {
     return `${request.leaveType} • ${format(new Date(request.fromDate), 'MMM d')} - ${format(new Date(request.toDate), 'MMM d, yyyy')}`;
   } else if (request.type === 'expense') {
@@ -74,7 +75,7 @@ export default function Dashboard() {
   const [usageTitle, setUsageTitle] = useState('');
 
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<TypedRequest | null>(null);
 
   const stats = useMemo(() => {
     const pendingCount = pendingLeaves.length + pendingExpenses.length + pendingDiscounts.length;
@@ -180,7 +181,7 @@ export default function Dashboard() {
     if (stats.pendingRequests > 0) data.push({ name: 'Pending', value: stats.pendingRequests, color: COLORS.pending });
     if (stats.cancelledRequests > 0) data.push({ name: 'Cancelled', value: stats.cancelledRequests, color: COLORS.cancelled });
     return data;
-  }, [isAdmin, stats, statusDistribution]);
+  }, [stats]);
 
   const getUsageData = (type: 'leave' | 'expense' | 'discount') => {
     if (type === 'leave') {
@@ -439,7 +440,7 @@ export default function Dashboard() {
                           height={80}
                           content={({ payload }) => (
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
-                              {payload?.map((entry: any, index) => (
+                              {payload?.map((entry, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                   <div className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
                                   <span className="text-[11px] font-medium text-muted-foreground truncate">{entry.value}</span>

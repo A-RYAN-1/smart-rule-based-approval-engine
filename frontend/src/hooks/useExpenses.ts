@@ -1,3 +1,4 @@
+import { apiErrorMessage } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { expenseService } from '@/services/expense.service';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,8 +28,8 @@ export function useExpenses(params?: { myLimit?: number; myOffset?: number; pend
             toast.success('Expense requested successfully');
             queryClient.invalidateQueries({ queryKey: ['expenses', 'my'] });
         },
-        onError: (error: any) => {
-            toast.error(error.response?.data?.error || 'Failed to request expense');
+        onError: (error: unknown) => {
+            toast.error(apiErrorMessage(error, 'Failed to request expense'));
         },
     });
 

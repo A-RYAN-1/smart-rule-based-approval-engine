@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Shield, Plus, Trash2, Zap, CheckCircle2, XCircle, Users, Edit } from 'lucide-react';
-import { RequestType, ApprovalRule } from '@/types';
+import { RequestType, ApprovalRule, RuleCondition } from '@/types';
 import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -49,7 +49,7 @@ export default function RulesManagementPage() {
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [newRule, setNewRule] = useState({
     requestType: 'leave' as RequestType,
-    condition: {} as any,
+    condition: {} as RuleCondition,
     action: 'AUTO_APPROVE' as ApprovalRule['action'],
     priority: 1,
     gradeId: 1,

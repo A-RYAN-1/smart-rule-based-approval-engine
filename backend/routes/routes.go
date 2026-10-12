@@ -2,7 +2,6 @@ package routes
 
 import (
 	"context"
-	"time"
 
 	"github.com/ankita-advitot/rule_based_approval_engine/app/auth"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/domain_service"
@@ -48,29 +47,8 @@ func Register(
 	discountHandler := domain_service.NewDiscountHandler(ctx, discountService)
 	discountApprovalHandler := domain_service.NewDiscountApprovalHandler(ctx, discountApprovalService)
 
-	// Health check endpoint (root level, no auth required)
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
-			"service":   "approval-engine",
-		})
-	})
-
 	// Public routes
 	public := router.Group("/api")
-	{
-		// Auth routes (some frontends use /auth/login, some /api/login, supporting /auth via alias if needed, but here keeping /api for now as per original, but issue says frontend uses /auth/login. Wait, issue says "The backend only provides /auth/login".
-		// Actually the original code had public.POST("/login", ...) under /api group, so it was /api/login.
-		// Frontend auth.service.ts calls /auth/login.
-		// So I need to move these or alias them.
-		// I will create a separate base group for /auth if it's at root, or /api/auth if strictly under api.
-		// Frontend: `api.post<any>('/auth/login', ...)` with baseURL `VITE_API_URL || '/api'`.
-		// If VITE_API_URL is empty, it calls `/api/auth/login`. If VITE_API_URL is `http://localhost:8080`, it calls `.../auth/login`.
-		// The safest/most standard way if `api` object has baseURL `/api`:
-		// Request is `/api/auth/login`.
-		// So I should register `public.Group("/auth")` inside `/api`.
-	}
 
 	// Auth routes under /api/auth to match frontend's `/api/auth/login` (assuming standard axios baseURL setup)
 	authGroup := public.Group("/auth")

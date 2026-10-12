@@ -1,2 +1,31 @@
-Data.md
-.github
+# Secrets and local config: only .env.example is tracked
+.env
+.env.*
+.env*.local
+!.env.example
+
+# Build output and dependencies
+node_modules/
+dist/
+frontend/.vite/
+backend/bin/
+backend/main
+backend/server
+*.exe
+coverage.out
+
+# Vercel
+.vercel/
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local leftovers from before the 2026-10 cleanup (untracked, safe to delete)
+backend/database/migrations/
+backend/repositories/migrations/*.sql
+backend/generate_hashes.go
+backend/.gitignore
+frontend/bun.lockb
+

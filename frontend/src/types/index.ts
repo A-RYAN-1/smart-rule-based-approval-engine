@@ -88,10 +88,13 @@ export interface Holiday {
   description: string;
 }
 
+/** A rule's JSON condition, e.g. { "max_days": 3 }. */
+export type RuleCondition = Record<string, unknown> | string;
+
 export interface ApprovalRule {
   id: number;
   requestType: RequestType;
-  condition: any; // Can be object or stringified JSON
+  condition: RuleCondition; // object from the API; a string while being edited
   action: 'auto_approve' | 'auto_reject' | 'assign_approver' | 'AUTO_APPROVE' | 'AUTO_REJECT';
   priority: number;
   isActive: boolean;
@@ -124,3 +127,27 @@ export interface DashboardStats {
   autoApproved: number;
   autoRejected: number;
 }
+
+/** GET /reports/dashboard (admin) */
+export interface DashboardSummary {
+  total_pending: number;
+  approved: number;
+  rejected: number;
+  auto_rejected: number;
+  pending: number;
+  cancelled: number;
+  distribution: {
+    pending: Record<RequestType, number>;
+    approved: number;
+    rejected: number;
+    auto_rejected: number;
+    cancelled: number;
+  };
+  type_report: RequestTypeReport[];
+}
+
+/** A request of any type, tagged with its type (lists that mix all three). */
+export type TypedRequest =
+  | (LeaveRequest & { type: 'leave' })
+  | (ExpenseRequest & { type: 'expense' })
+  | (DiscountRequest & { type: 'discount' });

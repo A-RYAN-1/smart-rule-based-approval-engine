@@ -66,6 +66,7 @@ var (
 var (
 	ErrInvalidToken            = errors.New("invalid token")
 	ErrUnexpectedSigningMethod = errors.New("unexpected signing method")
+	ErrJWTSecretNotSet         = errors.New("JWT secret is not configured")
 )
 
 // --- Validation errors ---
@@ -74,7 +75,7 @@ var (
 	ErrInvalidDateRange = errors.New("from date cannot be after to date")
 	ErrPastDate         = errors.New("leave dates cannot be in the past")
 	ErrNegativeValue    = errors.New("value must be positive")
-	ErrQuotaExceeded     = errors.New("value exceeds allowed quota")
+	ErrQuotaExceeded    = errors.New("value exceeds allowed quota")
 )
 
 // --- Database errors ---

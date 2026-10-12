@@ -12,10 +12,9 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 )
 
-var (
-	AdminID   = int64(1)
-	ManagerID = int64(2)
-)
+// ManagerID is the id of the seeded manager account that new employees
+// report to (0 when no manager exists yet). seed.Accounts sets it on startup.
+var ManagerID int64
 
 // handles authentication and user registration business logic
 type AuthService struct {
@@ -35,7 +34,6 @@ func NewAuthService(ctx context.Context, userRepo interfaces.UserRepository, bal
 
 // RegisterUser registers a new user
 func (s *AuthService) RegisterUser(ctx context.Context, name, email, password string) error {
-	log.Println("RegisterUser started:", email)
 
 	if strings.TrimSpace(email) == "" {
 		log.Println("Validation failed: email empty")
@@ -58,7 +56,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, name, email, password st
 		return apperrors.ErrDatabase
 	}
 	if exists {
-		log.Println("Email already registered:", email)
+		log.Println("register: email already registered")
 		return apperrors.ErrEmailAlreadyRegistered
 	}
 
@@ -69,26 +67,17 @@ func (s *AuthService) RegisterUser(ctx context.Context, name, email, password st
 		return apperrors.ErrPasswordHashFailed
 	}
 
-	// Decide role, grade, manager_id
-	var role string
-	var gradeID int64
+	// Self-registration always creates an employee. The admin and manager
+	// accounts are created only by the startup seed, never by sign-up.
+	if isReservedEmail(email) {
+		return apperrors.ErrEmailAlreadyRegistered
+	}
+	role := constants.RoleEmployee
+	gradeID := int64(1)
 	var managerID *int64
-
-	switch email {
-	case constants.AdminEmail:
-		role = constants.RoleAdmin
-		gradeID = 3
-		managerID = nil
-
-	case constants.ManagerEmail:
-		role = constants.RoleManager
-		gradeID = 2
-		managerID = &AdminID
-
-	default:
-		role = constants.RoleEmployee
-		gradeID = 1
-		managerID = &ManagerID
+	if ManagerID != 0 {
+		id := ManagerID
+		managerID = &id
 	}
 
 	log.Printf("Role decided: role=%s grade=%d managerID=%v\n", role, gradeID, managerID)
@@ -125,7 +114,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, name, email, password st
 		return apperrors.ErrTransactionCommit
 	}
 
-	log.Println("RegisterUser completed successfully:", email)
+	log.Println("register: user created, id", userID)
 	return nil
 }
 
@@ -156,4 +145,9 @@ func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*models
 // GetUserByID fetches a user by ID
 func (s *AuthService) GetUserByID(ctx context.Context, id int64) (*models.User, error) {
 	return s.userRepo.GetByID(ctx, id)
+}
+
+func isReservedEmail(email string) bool {
+	e := strings.ToLower(strings.TrimSpace(email))
+	return e == constants.AdminEmail || e == constants.ManagerEmail
 }

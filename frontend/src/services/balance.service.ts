@@ -1,10 +1,22 @@
-import api from '@/lib/api';
+import api, { unwrap } from '@/lib/api';
 import { UnifiedBalances } from '@/types';
+
+interface RawBucket {
+    total: number;
+    remaining: number;
+}
+
+/** GET /balances: remaining and total per request type. */
+export interface RawBalances {
+    leave?: RawBucket;
+    expense?: RawBucket;
+    discount?: RawBucket;
+}
 
 export const balanceService = {
     async getUnifiedBalances(): Promise<UnifiedBalances> {
-        const response = await api.get<any>('/balances');
-        const data = response.data.data || response.data;
+        const response = await api.get<unknown>('/balances');
+        const data = unwrap<RawBalances>(response.data);
 
         // Map the backend data to UnifiedBalances schema
         return {

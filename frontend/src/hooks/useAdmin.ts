@@ -10,7 +10,6 @@ export function useAdmin() {
     const isApprover = user?.role === 'admin' || user?.role === 'manager';
     const isAdmin = user?.role === 'admin';
 
-    console.log('[useAdmin] User role:', user?.role, 'isAdmin:', isAdmin);
 
     // Dashboard Summary
     const dashboardSummaryQuery = useQuery({
@@ -127,16 +126,6 @@ export function useAdmin() {
     };
 
     // Debug logging
-    console.log('[useAdmin] Query states:', {
-        dashboardSummaryLoading: dashboardSummaryQuery.isLoading,
-        dashboardSummaryError: dashboardSummaryQuery.error,
-        statusDistributionLoading: statusDistributionQuery.isLoading,
-        statusDistributionError: statusDistributionQuery.error,
-        requestsByTypeLoading: requestsByTypeQuery.isLoading,
-        requestsByTypeError: requestsByTypeQuery.error,
-        rulesLoading: rulesQuery.isLoading,
-        rulesError: rulesQuery.error
-    });
 
     return {
         // Dashboard

@@ -10,7 +10,6 @@ dist/
 frontend/.vite/
 backend/bin/
 backend/main
-backend/server
 *.exe
 coverage.out
 

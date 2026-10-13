@@ -40,8 +40,12 @@ type Config struct {
 	RunCron bool
 	// Seed accounts, created on startup when the password is set and the
 	// account does not exist yet.
-	SeedAdminPassword   string
-	SeedManagerPassword string
+	SeedAdminPassword    string
+	SeedManagerPassword  string
+	SeedEmployeePassword string
+	// DemoMode publishes the seed logins at /api/demo-logins (shown on the
+	// login page) and makes the cron run restore the default rules.
+	DemoMode bool
 }
 
 // Load reads .env (if present, for local runs) and then the environment.
@@ -64,15 +68,17 @@ func FromEnv(getenv func(string) string) (*Config, error) {
 	}
 
 	cfg := &Config{
-		Port:                get("PORT", get("APP_PORT", "8080")),
-		JWTSecret:           getenv("JWT_SECRET"),
-		CORSOrigins:         splitList(get("CORS_ORIGINS", "")),
-		CookieSecure:        get("COOKIE_SECURE", "true") == "true",
-		GinMode:             get("GIN_MODE", "release"),
-		CronSecret:          getenv("CRON_SECRET"),
-		RunCron:             get("RUN_CRON", "true") == "true",
-		SeedAdminPassword:   getenv("SEED_ADMIN_PASSWORD"),
-		SeedManagerPassword: getenv("SEED_MANAGER_PASSWORD"),
+		Port:                 get("PORT", get("APP_PORT", "8080")),
+		JWTSecret:            getenv("JWT_SECRET"),
+		CORSOrigins:          splitList(get("CORS_ORIGINS", "")),
+		CookieSecure:         get("COOKIE_SECURE", "true") == "true",
+		GinMode:              get("GIN_MODE", "release"),
+		CronSecret:           getenv("CRON_SECRET"),
+		RunCron:              get("RUN_CRON", "true") == "true",
+		SeedAdminPassword:    getenv("SEED_ADMIN_PASSWORD"),
+		SeedManagerPassword:  getenv("SEED_MANAGER_PASSWORD"),
+		SeedEmployeePassword: getenv("SEED_EMPLOYEE_PASSWORD"),
+		DemoMode:             get("DEMO_MODE", "false") == "true",
 	}
 
 	var problems []string
@@ -108,8 +114,9 @@ func FromEnv(getenv func(string) string) (*Config, error) {
 		}
 	}
 	for name, pw := range map[string]string{
-		"SEED_ADMIN_PASSWORD":   cfg.SeedAdminPassword,
-		"SEED_MANAGER_PASSWORD": cfg.SeedManagerPassword,
+		"SEED_ADMIN_PASSWORD":    cfg.SeedAdminPassword,
+		"SEED_MANAGER_PASSWORD":  cfg.SeedManagerPassword,
+		"SEED_EMPLOYEE_PASSWORD": cfg.SeedEmployeePassword,
 	} {
 		if pw != "" && len(pw) < 8 {
 			problems = append(problems, name+" must be at least 8 characters")

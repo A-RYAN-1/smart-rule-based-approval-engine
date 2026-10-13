@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, ArrowRight, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { loginSchema, registerSchema } from '@/lib/validations';
+import { DemoLogins } from '@/components/DemoLogins';
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -254,6 +255,13 @@ export default function AuthPage() {
                     {isLoading ? 'Signing in...' : 'Sign In'}
                   </Button>
                 </form>
+
+                <DemoLogins
+                  onPick={(email, password) => {
+                    setLoginEmail(email);
+                    setLoginPassword(password);
+                  }}
+                />
               </TabsContent>
 
               <TabsContent value="register" className="outline-none animate-fade-in">

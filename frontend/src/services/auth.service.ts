@@ -19,6 +19,13 @@ interface RegisterResponse {
     user: User;
 }
 
+/** A public demo account, served only when the backend runs in DEMO_MODE. */
+export interface DemoLogin {
+    role: string;
+    email: string;
+    password: string;
+}
+
 export const authService = {
     async login(email: string, password: string): Promise<User> {
         const response = await api.post<unknown>('/auth/login', { email, password });
@@ -48,6 +55,16 @@ export const authService = {
 
     async logout(): Promise<void> {
         await api.post('/auth/logout');
+    },
+
+    /** The demo accounts, or an empty list when demo mode is off. */
+    async demoLogins(): Promise<DemoLogin[]> {
+        try {
+            const response = await api.get<{ logins?: DemoLogin[] }>('/demo-logins');
+            return response.data.logins ?? [];
+        } catch {
+            return [];
+        }
     },
 
     async getUserInfo(): Promise<User> {

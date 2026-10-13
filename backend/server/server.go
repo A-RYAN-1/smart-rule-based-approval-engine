@@ -135,7 +135,21 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 			return
 		}
 		jobs.RunAutoRejectJob(c.Request.Context(), autoRejectService)
+		if cfg.DemoMode {
+			if err := seed.ResetDemoRules(c.Request.Context(), db); err != nil {
+				log.Printf("request_id=%s demo rule reset failed: %v", c.GetString("request_id"), err)
+			}
+		}
 		c.JSON(http.StatusOK, gin.H{"status": "done"})
+	})
+
+	// Demo accounts for the login page. 404 unless DEMO_MODE is on.
+	router.GET("/api/demo-logins", func(c *gin.Context) {
+		if !cfg.DemoMode {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"logins": seed.DemoLogins(cfg)})
 	})
 
 	routes.Register(ctx, router,

@@ -13,6 +13,7 @@ const (
 	StatusAutoApproved = "AUTO_APPROVED"
 	StatusAutoApprove  = "AUTO_APPROVE"
 
-	AdminEmail   = "admin@company.com"
-	ManagerEmail = "manager@company.com"
+	AdminEmail    = "admin@company.com"
+	ManagerEmail  = "manager@company.com"
+	EmployeeEmail = "employee@company.com"
 )

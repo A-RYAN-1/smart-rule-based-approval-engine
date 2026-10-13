@@ -67,8 +67,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, name, email, password st
 		return apperrors.ErrPasswordHashFailed
 	}
 
-	// Self-registration always creates an employee. The admin and manager
-	// accounts are created only by the startup seed, never by sign-up.
+	// Self-registration always creates an employee. The seed accounts
+	// (admin, manager, demo employee) are created only at startup.
 	if isReservedEmail(email) {
 		return apperrors.ErrEmailAlreadyRegistered
 	}
@@ -149,5 +149,5 @@ func (s *AuthService) GetUserByID(ctx context.Context, id int64) (*models.User, 
 
 func isReservedEmail(email string) bool {
 	e := strings.ToLower(strings.TrimSpace(email))
-	return e == constants.AdminEmail || e == constants.ManagerEmail
+	return e == constants.AdminEmail || e == constants.ManagerEmail || e == constants.EmployeeEmail
 }

@@ -78,3 +78,20 @@ func TestFromEnvSplitsCORSOrigins(t *testing.T) {
 		t.Errorf("CORSOrigins = %v", cfg.CORSOrigins)
 	}
 }
+
+func TestFromEnvDemoMode(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "postgres://x", "JWT_SECRET": secret}
+	cfg, err := FromEnv(env(base))
+	if err != nil || cfg.DemoMode {
+		t.Fatalf("demo mode must default to off: %v, %v", cfg, err)
+	}
+	base["DEMO_MODE"] = "true"
+	base["SEED_EMPLOYEE_PASSWORD"] = "short"
+	if _, err := FromEnv(env(base)); err == nil || !strings.Contains(err.Error(), "SEED_EMPLOYEE_PASSWORD") {
+		t.Fatalf("a short employee password must be refused: %v", err)
+	}
+	base["SEED_EMPLOYEE_PASSWORD"] = "Employee@123"
+	if cfg, err := FromEnv(env(base)); err != nil || !cfg.DemoMode {
+		t.Fatalf("demo mode should be on: %v, %v", cfg, err)
+	}
+}

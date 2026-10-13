@@ -24,13 +24,15 @@ func TestMainFlow(t *testing.T) {
 
 	cfg, err := config.FromEnv(func(k string) string {
 		return map[string]string{
-			"DATABASE_URL":          dbURL,
-			"JWT_SECRET":            "integration-test-secret-0123456789abcdef",
-			"GIN_MODE":              "test",
-			"COOKIE_SECURE":         "false",
-			"CRON_SECRET":           "cron-test-secret",
-			"SEED_ADMIN_PASSWORD":   "Admin@12345",
-			"SEED_MANAGER_PASSWORD": "Manager@12345",
+			"DATABASE_URL":           dbURL,
+			"JWT_SECRET":             "integration-test-secret-0123456789abcdef",
+			"GIN_MODE":               "test",
+			"COOKIE_SECURE":          "false",
+			"CRON_SECRET":            "cron-test-secret",
+			"SEED_ADMIN_PASSWORD":    "Admin@12345",
+			"SEED_MANAGER_PASSWORD":  "Manager@12345",
+			"SEED_EMPLOYEE_PASSWORD": "Employee@12345",
+			"DEMO_MODE":              "true",
 		}[k]
 	})
 	if err != nil {
@@ -136,5 +138,38 @@ func TestMainFlow(t *testing.T) {
 	}
 	if code, _ := call("GET", "/api/cron/auto-reject", "cron-test-secret", nil); code != http.StatusOK {
 		t.Fatalf("cron with the secret should run, got %d", code)
+	}
+
+	// Demo mode: the three seed logins are published and work, and the
+	// cron run undoes rule changes made with the public admin login.
+	code, out = call("GET", "/api/demo-logins", "", nil)
+	if code != http.StatusOK || len(out["logins"].([]any)) != 3 {
+		t.Fatalf("demo logins: %d %v", code, out)
+	}
+	demoEmployee := login("employee@company.com", "Employee@12345")
+	admin := login("admin@company.com", "Admin@12345")
+	if code, _ := call("GET", "/api/me", demoEmployee, nil); code != http.StatusOK {
+		t.Fatalf("demo employee /me: %d", code)
+	}
+	code, out = call("GET", "/api/admin/rules", admin, nil)
+	if code != http.StatusOK {
+		t.Fatalf("admin rules: %d %v", code, out)
+	}
+	countRules := func() int {
+		var n int
+		if err := app.Pool.QueryRow(context.Background(), "SELECT count(*) FROM rules").Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	before := countRules()
+	if _, err := app.Pool.Exec(context.Background(), "DELETE FROM rules"); err != nil {
+		t.Fatal(err)
+	}
+	if code, _ := call("GET", "/api/cron/auto-reject", "cron-test-secret", nil); code != http.StatusOK {
+		t.Fatalf("cron: %d", code)
+	}
+	if after := countRules(); after != before || after != 9 {
+		t.Fatalf("rules after demo reset = %d, want %d (9 defaults)", after, before)
 	}
 }

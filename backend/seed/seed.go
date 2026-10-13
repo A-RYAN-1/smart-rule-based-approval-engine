@@ -1,5 +1,6 @@
-// Package seed creates the admin and manager accounts on startup. Sign-up
-// only ever creates employees, so these two roles exist only through here.
+// Package seed creates the admin, manager and demo employee accounts on
+// startup. Sign-up only ever creates employees, so the admin and manager
+// roles exist only through here.
 package seed
 
 import (
@@ -22,15 +23,17 @@ type account struct {
 	withBalances                       bool
 }
 
-// Accounts creates the admin and the manager when their password is set in
-// the config and the account does not exist yet, then points new sign-ups
-// at the manager. Existing accounts are never changed.
+// Accounts creates the admin, the manager and the demo employee when their
+// password is set in the config and the account does not exist yet, then
+// points new sign-ups at the manager. Existing accounts are never changed.
 func Accounts(ctx context.Context, db interfaces.DB, balances interfaces.BalanceRepository, cfg *config.Config) error {
 	accounts := []account{
 		{name: "Admin", email: constants.AdminEmail, role: constants.RoleAdmin, grade: "Grade 3",
 			password: cfg.SeedAdminPassword},
 		{name: "Manager", email: constants.ManagerEmail, role: constants.RoleManager, grade: "Grade 2",
 			password: cfg.SeedManagerPassword, managerEmail: constants.AdminEmail, withBalances: true},
+		{name: "Employee", email: constants.EmployeeEmail, role: constants.RoleEmployee, grade: "STANDARD",
+			password: cfg.SeedEmployeePassword, managerEmail: constants.ManagerEmail, withBalances: true},
 	}
 	for _, a := range accounts {
 		if a.password == "" {

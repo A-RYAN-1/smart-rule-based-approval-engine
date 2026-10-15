@@ -372,7 +372,3 @@ Built by [Ankita Advitot](https://github.com/Ankita-Advitot) and
 - **Aryan Deshmukh**: the React frontend, the deployment, and the production pass (secure
   configuration, migrations that work on a fresh install, tests and CI, the single Vercel deploy, demo
   accounts).
-
-## License
-
-[MIT](LICENSE)

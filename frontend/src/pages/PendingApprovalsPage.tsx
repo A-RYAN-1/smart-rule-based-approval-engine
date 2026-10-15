@@ -309,7 +309,7 @@ export default function PendingApprovalsPage() {
                     <TableCell colSpan={6} className="text-center py-12">
                       <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
                       <p className="text-muted-foreground">No pending requests</p>
-                      <p className="text-sm text-muted-foreground">All caught up! 🎉</p>
+                      <p className="text-sm text-muted-foreground">All caught up.</p>
                     </TableCell>
                   </TableRow>
                 )}

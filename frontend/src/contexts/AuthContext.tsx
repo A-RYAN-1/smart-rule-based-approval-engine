@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // 🔥 CRITICAL: Clear ALL cached queries BEFORE login to prevent data leakage
+      // Critical: clear ALL cached queries BEFORE login to prevent data leakage
       await queryClient.cancelQueries();
       queryClient.clear();
       

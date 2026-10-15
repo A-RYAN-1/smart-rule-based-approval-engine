@@ -24,7 +24,6 @@
 <p align="center">
   <a href="https://github.com/A-RYAN-1/smart-rule-based-approval-engine/actions/workflows/ci.yml"><img src="https://github.com/A-RYAN-1/smart-rule-based-approval-engine/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/A-RYAN-1/smart-rule-based-approval-engine/actions/workflows/uptime.yml"><img src="https://github.com/A-RYAN-1/smart-rule-based-approval-engine/actions/workflows/uptime.yml/badge.svg" alt="Uptime"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
   <img src="https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white" alt="Go 1.26">
   <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black" alt="React 18">
   <img src="https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL on Neon">
@@ -54,7 +53,6 @@
 - [Deployment](#deployment)
 - [Status and roadmap](#status-and-roadmap)
 - [Contributors](#contributors)
-- [License](#license)
 
 ## About
 

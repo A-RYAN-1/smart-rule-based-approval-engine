@@ -14,7 +14,8 @@ interface DemoLoginsProps {
 
 /** "Try it live": the public demo accounts, shown only in demo mode. */
 export function DemoLogins({ onPick }: DemoLoginsProps) {
-  const [logins, setLogins] = useState<DemoLogin[]>([]);
+  // null while the list is loading, so the space can be held for it.
+  const [logins, setLogins] = useState<DemoLogin[] | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -26,6 +27,10 @@ export function DemoLogins({ onPick }: DemoLoginsProps) {
     };
   }, []);
 
+  // Hold the panel's height while loading so the page does not jump when it
+  // arrives (a layout shift Lighthouse counted on the sign-in page). The
+  // heights are the three-account panel measured at 412 px and 1350 px wide.
+  if (logins === null) return <div aria-hidden="true" className="mt-6 h-[268px] sm:h-[220px]" />;
   if (logins.length === 0) return null;
 
   return (

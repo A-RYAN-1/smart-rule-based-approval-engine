@@ -3,6 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { User } from '@/types';
 import { authService } from '@/services/auth.service';
 import { toast } from 'sonner';
+import axios from 'axios';
+
+const USER_KEY = 'approval_engine_user';
 
 interface AuthContextType {
   user: User | null;
@@ -16,26 +19,33 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // The session cookie is httpOnly, so the stored user is the only hint that
+  // this browser has signed in before. Without it there is no session to
+  // check, and calling /api/me would only log a 401 on every first visit.
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => localStorage.getItem(USER_KEY) !== null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    const storedUser = localStorage.getItem(USER_KEY);
+    if (storedUser === null) return;
+
     const checkAuth = async () => {
       try {
         const fullUser = await authService.getUserInfo();
         setUser(fullUser);
-        localStorage.setItem('approval_engine_user', JSON.stringify(fullUser));
+        localStorage.setItem(USER_KEY, JSON.stringify(fullUser));
       } catch (e) {
-        console.warn('Silent auth check failed or no session', e);
-        // Fallback to localStorage if offline or first load, but clear if 401
-        const storedUser = localStorage.getItem('approval_engine_user');
-        if (storedUser) {
-          try {
-            setUser(JSON.parse(storedUser));
-          } catch (parseError) {
-            localStorage.removeItem('approval_engine_user');
-          }
+        if (axios.isAxiosError(e) && e.response?.status === 401) {
+          // The session expired or was revoked: forget the stored user.
+          localStorage.removeItem(USER_KEY);
+          return;
+        }
+        // Offline or the API is down: keep the stored user until it answers.
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch {
+          localStorage.removeItem(USER_KEY);
         }
       } finally {
         setIsLoading(false);
@@ -54,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const user = await authService.login(email, password);
       setUser(user);
-      localStorage.setItem('approval_engine_user', JSON.stringify(user));
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
       toast.success('Logged in successfully');
     } catch (error) {
       console.error('Login error:', error);
@@ -70,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const user = await authService.register(name, email, password);
       setUser(user);
-      localStorage.setItem('approval_engine_user', JSON.stringify(user));
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
       toast.success('Registration successful');
     } catch (error) {
       console.error('Registration error:', error);
@@ -85,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authService.logout();
       setUser(null);
-      localStorage.removeItem('approval_engine_user');
+      localStorage.removeItem(USER_KEY);
       await queryClient.cancelQueries();
       queryClient.clear();
       toast.success('Logged out');
@@ -93,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout error', error);
       // Even if API fails, clear local state
       setUser(null);
-      localStorage.removeItem('approval_engine_user');
+      localStorage.removeItem(USER_KEY);
     }
   };
 

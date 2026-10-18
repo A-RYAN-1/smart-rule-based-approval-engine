@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { DemoLogins } from './DemoLogins';
 import { authService } from '@/services/auth.service';
 
@@ -10,11 +10,12 @@ vi.mock('@/services/auth.service', () => ({
 describe('DemoLogins', () => {
   beforeEach(() => vi.mocked(authService.demoLogins).mockReset());
 
-  it('renders nothing when demo mode is off', async () => {
+  it('holds the panel space while loading, then renders nothing when demo mode is off', async () => {
     vi.mocked(authService.demoLogins).mockResolvedValue([]);
     const { container } = render(<DemoLogins onPick={() => {}} />);
-    await Promise.resolve();
-    expect(container).toBeEmptyDOMElement();
+    expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
   it('fills the form with the picked account', async () => {

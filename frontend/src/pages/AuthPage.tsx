@@ -209,6 +209,7 @@ export default function AuthPage() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="login-email"
+                        autoComplete="email"
                         ref={loginEmailRef}
                         type="email"
                         placeholder="name@company.com"
@@ -227,6 +228,7 @@ export default function AuthPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="login-password"
+                        autoComplete="current-password"
                         type={showLoginPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={loginPassword}
@@ -275,6 +277,7 @@ export default function AuthPage() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="register-name"
+                        autoComplete="name"
                         type="text"
                         placeholder="John Doe"
                         value={registerName}
@@ -290,6 +293,7 @@ export default function AuthPage() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="register-email"
+                        autoComplete="email"
                         type="email"
                         placeholder="name@company.com"
                         value={registerEmail}
@@ -305,6 +309,7 @@ export default function AuthPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="register-password"
+                        autoComplete="new-password"
                         type={showRegisterPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={registerPassword}

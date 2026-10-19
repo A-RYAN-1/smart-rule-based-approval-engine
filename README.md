@@ -242,12 +242,14 @@ API reference: [`backend/api/swagger.yaml`](backend/api/swagger.yaml) and the Po
 | Security | Signing key from `JWT_SECRET` (32+ characters, validated); token in an httpOnly, Secure, SameSite=Lax cookie; roles checked on the server; admin and manager accounts only from the seed, never from sign-up; CORS limited to configured origins; HSTS and X-Frame-Options headers; the cron endpoint requires `CRON_SECRET` |
 | Dependencies | `govulncheck`: no known vulnerabilities in reachable code. `npm audit --omit=dev`: one moderate React Router advisory (open redirect through `<Link>`/`navigate` targets); every navigation target here is a fixed path, so user input cannot reach it |
 
-Lighthouse on the live site, measured 2026-10-13:
+Lighthouse 12.8.2 on the live sign-in page, measured 2026-10-19:
 
 | | Performance | Accessibility | Best practices | SEO |
 |---|---|---|---|---|
-| Mobile | 76 | 86 | 96 | 100 |
-| Desktop | 98 | 86 | 96 | 100 |
+| Mobile | 97 | 100 | 100 | 100 |
+| Desktop | 100 | 100 | 100 | 100 |
+
+Mobile first paint is 1.9 s, largest paint 2.3 s, layout shift 0. Only the sign-in page is audited so far; the pages behind login are not.
 
 Run the checks yourself:
 
@@ -349,15 +351,12 @@ runs the nightly job in-process.
 **Known limitations**
 
 - Leave is counted in calendar days, so a request over a weekend uses weekend days from the balance.
-- Lighthouse accessibility is 86: some icon buttons lack names, a few colours miss contrast, and the
-  page has no `main` landmark.
-- Mobile performance is 76 (LCP 4.1 s): the app ships as one large JavaScript chunk.
+- Lighthouse and accessibility checks cover the sign-in page only; the pages behind login have not been audited.
 - The first request after a quiet period waits for a function cold start.
 
 **Planned**
 
-- [ ] Accessibility fixes to reach 100 (button names, contrast, landmarks, tab order)
-- [ ] Split the bundle by route to bring mobile LCP under 2.5 s
+- [ ] Audit the pages behind login for accessibility and performance
 - [ ] Count leave in working days (the helper `CountWorkingDays` exists; balances do not use it yet)
 
 ## Contributors

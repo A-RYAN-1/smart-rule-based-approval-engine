@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,8 +37,7 @@ export default function AuthPage() {
   }, []);
 
   if (isAuthenticated) {
-    navigate('/dashboard', { replace: true });
-    return null;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -121,7 +120,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background font-sans items-center justify-center p-4 lg:p-0">
+    <main className="min-h-screen flex bg-background font-sans items-center justify-center p-4 lg:p-0">
       <div className="w-full max-w-[1200px] grid lg:grid-cols-2 bg-card rounded-3xl shadow-2xl overflow-hidden border border-border/50 min-h-[600px]">
         {/* Left Panel - Branding */}
         <div className="hidden lg:flex bg-sidebar p-12 flex-col justify-between relative overflow-hidden text-sidebar-foreground">
@@ -210,6 +209,7 @@ export default function AuthPage() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="login-email"
+                        autoComplete="email"
                         ref={loginEmailRef}
                         type="email"
                         placeholder="name@company.com"
@@ -217,7 +217,6 @@ export default function AuthPage() {
                         onChange={(e) => setLoginEmail(e.target.value)}
                         className="pl-10 h-10 rounded-lg"
                         required
-                        tabIndex={1}
                       />
                     </div>
                   </div>
@@ -229,29 +228,30 @@ export default function AuthPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="login-password"
+                        autoComplete="current-password"
                         type={showLoginPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         className="pl-10 h-10 pr-10 rounded-lg"
                         required
-                        tabIndex={2}
                       />
                       <button
                         type="button"
                         onClick={() => setShowLoginPassword(!showLoginPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none p-1"
-                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary p-1"
+                        aria-label="Show password"
+                        aria-pressed={showLoginPassword}
                       >
                         {showLoginPassword ? (
-                          <EyeOff className="h-4 w-4" />
+                          <EyeOff aria-hidden="true" className="h-4 w-4" />
                         ) : (
-                          <Eye className="h-4 w-4" />
+                          <Eye aria-hidden="true" className="h-4 w-4" />
                         )}
                       </button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full h-10 rounded-lg font-medium shadow-sm hover:translate-y-[-1px] transition-transform" disabled={isLoading} tabIndex={3}>
+                  <Button type="submit" className="w-full h-10 rounded-lg font-medium shadow-sm hover:translate-y-[-1px] transition-transform" disabled={isLoading}>
                     {isLoading ? 'Signing in...' : 'Sign In'}
                   </Button>
                 </form>
@@ -277,6 +277,7 @@ export default function AuthPage() {
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="register-name"
+                        autoComplete="name"
                         type="text"
                         placeholder="John Doe"
                         value={registerName}
@@ -292,6 +293,7 @@ export default function AuthPage() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="register-email"
+                        autoComplete="email"
                         type="email"
                         placeholder="name@company.com"
                         value={registerEmail}
@@ -307,6 +309,7 @@ export default function AuthPage() {
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                       <Input
                         id="register-password"
+                        autoComplete="new-password"
                         type={showRegisterPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={registerPassword}
@@ -318,13 +321,14 @@ export default function AuthPage() {
                       <button
                         type="button"
                         onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none p-1"
-                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary p-1"
+                        aria-label="Show password"
+                        aria-pressed={showRegisterPassword}
                       >
                         {showRegisterPassword ? (
-                          <EyeOff className="h-4 w-4" />
+                          <EyeOff aria-hidden="true" className="h-4 w-4" />
                         ) : (
-                          <Eye className="h-4 w-4" />
+                          <Eye aria-hidden="true" className="h-4 w-4" />
                         )}
                       </button>
                     </div>
@@ -338,6 +342,6 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

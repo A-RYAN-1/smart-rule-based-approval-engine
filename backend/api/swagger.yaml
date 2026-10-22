@@ -145,6 +145,11 @@ components:
           type: string
           format: date
           example: "2026-02-05"
+        days:
+          type: integer
+          readOnly: true
+          description: Working days the request uses (Monday to Friday, minus company holidays), fixed when it is applied
+          example: 4
         leave_type:
           type: string
           enum: [annual, sick, personal, maternity]
@@ -569,6 +574,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/leaves/working-days:
+    get:
+      tags:
+        - Leaves
+      summary: Count the days a leave would use
+      description: Working days from the first date to the last, both included, skipping weekends and company holidays. This is the number deducted from the balance.
+      operationId: countLeaveDays
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: The day count, as data.days
+        '400':
+          description: A date is malformed or from is after to
 
   /api/leaves/my:
     get:

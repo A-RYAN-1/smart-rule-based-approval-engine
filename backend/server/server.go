@@ -81,7 +81,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Services
 	authService := auth.NewAuthService(ctx, userRepo, balanceRepo, db)
 	ruleService := rules.NewRuleService(ctx, ruleRepo, gradeRepo, db)
-	leaveService := leave_service.NewLeaveService(ctx, leaveRepo, balanceRepo, ruleService, userRepo, db)
+	leaveService := leave_service.NewLeaveService(ctx, leaveRepo, balanceRepo, ruleService, userRepo, holidayRepo, db)
 	leaveApprovalService := leave_service.NewLeaveApprovalService(ctx, leaveRepo, balanceRepo, userRepo, db)
 	expenseService := expense_service.NewExpenseService(ctx, expenseRepo, balanceRepo, ruleService, userRepo, db)
 	expenseApprovalService := expense_service.NewExpenseApprovalService(ctx, expenseRepo, balanceRepo, userRepo, db)

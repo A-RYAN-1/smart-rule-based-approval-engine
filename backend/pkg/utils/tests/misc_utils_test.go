@@ -39,12 +39,6 @@ func TestMiscUtils_ApprovalRules(t *testing.T) {
 }
 
 func TestMiscUtils_DateAndWorkingDays(t *testing.T) {
-	t.Run("CalculateLeaveDays", func(t *testing.T) {
-		from := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-		to := time.Date(2023, 1, 3, 0, 0, 0, 0, time.UTC)
-		assert.Equal(t, 3, utils.CalculateLeaveDays(from, to))
-	})
-
 	t.Run("CountWorkingDays", func(t *testing.T) {
 		from := time.Date(2023, 1, 6, 0, 0, 0, 0, time.UTC) // Friday
 		to := time.Date(2023, 1, 9, 0, 0, 0, 0, time.UTC)   // Monday
@@ -57,17 +51,6 @@ func TestMiscUtils_DateAndWorkingDays(t *testing.T) {
 			return d.Day() == 9 // Monday is holiday
 		}
 		assert.Equal(t, 1, utils.CountWorkingDays(from, to, isHoliday))
-	})
-
-	t.Run("CalculateLeaveDays - Edge Cases", func(t *testing.T) {
-		// Same day
-		d := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-		assert.Equal(t, 1, utils.CalculateLeaveDays(d, d))
-
-		// Backward dates
-		from := time.Date(2023, 1, 2, 0, 0, 0, 0, time.UTC)
-		to := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-		assert.Equal(t, 0, utils.CalculateLeaveDays(from, to))
 	})
 
 	t.Run("CountWorkingDays - Long Range", func(t *testing.T) {

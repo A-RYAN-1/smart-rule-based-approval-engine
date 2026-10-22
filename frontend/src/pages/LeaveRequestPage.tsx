@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLeaves } from '@/hooks/useLeaves';
@@ -13,9 +14,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarIcon, CalendarDays, Info } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { LeaveType } from '@/types';
+import { leaveService } from '@/services/leave.service';
 import { leaveRequestSchema } from '@/lib/validations';
 
 export default function LeaveRequestPage() {
@@ -32,7 +34,17 @@ export default function LeaveRequestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const selectedBalance = balances.find(b => b.leaveType === leaveType);
-  const leaveDays = fromDate && toDate ? differenceInDays(toDate, fromDate) + 1 : 0;
+  const fromText = fromDate ? format(fromDate, 'yyyy-MM-dd') : '';
+  const toText = toDate ? format(toDate, 'yyyy-MM-dd') : '';
+  // The server counts the days (weekends and company holidays are not leave
+  // days), so the number shown here is the one that will be deducted.
+  const workingDaysQuery = useQuery({
+    queryKey: ['leave-working-days', fromText, toText],
+    queryFn: () => leaveService.getWorkingDays(fromText, toText),
+    enabled: fromText !== '' && toText !== '' && fromText <= toText,
+  });
+  const leaveDays = workingDaysQuery.data ?? 0;
+  const noWorkingDays = workingDaysQuery.isSuccess && leaveDays === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +70,15 @@ export default function LeaveRequestPage() {
     const earnBalance = balances.find(b => b.leaveType === 'EARN')?.balance ?? 0;
     // Allow applying for leave if either the specific type has balance or EARN has balance
     const effectiveBalance = Math.max(selectedBalance?.balance ?? 0, earnBalance);
+
+    if (noWorkingDays) {
+      toast({
+        variant: "destructive",
+        title: "No working days selected",
+        description: "The dates you picked fall on weekends or company holidays.",
+      });
+      return;
+    }
 
     if (leaveDays > effectiveBalance) {
       toast({
@@ -214,9 +235,16 @@ export default function LeaveRequestPage() {
                 </div>
               </div>
 
+              {noWorkingDays && (
+                <div className="p-3 rounded-lg bg-muted/50 text-sm text-destructive">
+                  These dates fall on weekends or company holidays, so no leave is needed.
+                </div>
+              )}
+
               {leaveDays > 0 && (
                 <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                  <span className="font-medium">Duration:</span> {leaveDays} day{leaveDays > 1 ? 's' : ''}
+                  <span className="font-medium">Duration:</span> {leaveDays} working day{leaveDays > 1 ? 's' : ''}
+                  <span className="text-muted-foreground ml-2">(weekends and company holidays are not counted)</span>
                   {leaveDays > 7 && (
                     <span className="text-destructive ml-2">(May require additional approval)</span>
                   )}

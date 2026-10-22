@@ -7,6 +7,7 @@ type LeaveRequest struct {
 	EmployeeID   int64
 	FromDate     time.Time
 	ToDate       time.Time
+	Days         int
 	LeaveType    string
 	Reason       string
 	Status       string

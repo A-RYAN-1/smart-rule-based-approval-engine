@@ -19,6 +19,7 @@ export interface LeaveRequest {
   userName?: string;
   fromDate: string;
   toDate: string;
+  days?: number;
   leaveType: LeaveType;
   reason: string;
   status: RequestStatus;

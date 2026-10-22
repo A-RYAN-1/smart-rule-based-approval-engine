@@ -12,7 +12,7 @@ import (
 
 const (
 	aggQueryFetchAllLeaves = `
-		SELECT id, leave_type, from_date, to_date, status::TEXT, reason, approval_comment, created_at
+		SELECT id, leave_type, from_date, to_date, days, status::TEXT, reason, approval_comment, created_at
 		FROM leave_requests WHERE employee_id = $1
 	`
 	aggQueryFetchAllExpenses = `
@@ -24,12 +24,12 @@ const (
 		FROM discount_requests WHERE employee_id = $1
 	`
 	aggQueryFetchPendingLeavesForManager = `
-		SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.status::TEXT, lr.created_at
+		SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.days, lr.leave_type, lr.reason, lr.status::TEXT, lr.created_at
 		FROM leave_requests lr JOIN users u ON lr.employee_id = u.id
 		WHERE lr.status = 'PENDING' AND u.manager_id = $1
 	`
 	aggQueryFetchPendingLeavesForAdmin = `
-		SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.status::TEXT, lr.created_at
+		SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.days, lr.leave_type, lr.reason, lr.status::TEXT, lr.created_at
 		FROM leave_requests lr JOIN users u ON lr.employee_id = u.id
 		WHERE lr.status = 'PENDING'
 	`
@@ -160,12 +160,13 @@ func (r *aggregatedRepository) fetchPendingRequests(ctx context.Context, query, 
 				employeeID int64
 				name       string
 				from, to   time.Time
+				days       int
 				lType      string
 				reason     string
 				status     string
 				created    time.Time
 			)
-			if err := rows.Scan(&id, &employeeID, &name, &from, &to, &lType, &reason, &status, &created); err != nil {
+			if err := rows.Scan(&id, &employeeID, &name, &from, &to, &days, &lType, &reason, &status, &created); err != nil {
 				return nil, utils.MapPgError(err)
 			}
 			res = append(res, aggCombinedReq{
@@ -177,6 +178,7 @@ func (r *aggregatedRepository) fetchPendingRequests(ctx context.Context, query, 
 					"employee":   name,
 					"from_date":  from.Format("2006-01-02"),
 					"to_date":    to.Format("2006-01-02"),
+					"days":       days,
 					"leave_type": lType,
 					"reason":     reason,
 					"status":     status,
@@ -266,12 +268,13 @@ func (r *aggregatedRepository) fetchAllLeaves(ctx context.Context, userID int64)
 			id       int64
 			lType    string
 			from, to time.Time
+			days     int
 			status   string
 			reason   string
 			comment  *string
 			created  time.Time
 		)
-		if err := rows.Scan(&id, &lType, &from, &to, &status, &reason, &comment, &created); err != nil {
+		if err := rows.Scan(&id, &lType, &from, &to, &days, &status, &reason, &comment, &created); err != nil {
 			return nil, utils.MapPgError(err)
 		}
 		res = append(res, aggCombinedReq{
@@ -282,6 +285,7 @@ func (r *aggregatedRepository) fetchAllLeaves(ctx context.Context, userID int64)
 				"leave_type":       lType,
 				"from_date":        from.Format("2006-01-02"),
 				"to_date":          to.Format("2006-01-02"),
+				"days":             days,
 				"status":           status,
 				"reason":           reason,
 				"approval_comment": comment,

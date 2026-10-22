@@ -172,4 +172,69 @@ func TestMainFlow(t *testing.T) {
 	if after := countRules(); after != before || after != 9 {
 		t.Fatalf("rules after demo reset = %d, want %d (9 defaults)", after, before)
 	}
+
+	// Leave counts working days: Friday 2031-05-02 to Monday 2031-05-05.
+	workingDays := func(from, to string) int {
+		t.Helper()
+		code, out := call("GET", "/api/leaves/working-days?from="+from+"&to="+to, demoEmployee, nil)
+		if code != http.StatusOK {
+			t.Fatalf("working-days %s..%s: %d %v", from, to, code, out)
+		}
+		return int(out["data"].(map[string]any)["days"].(float64))
+	}
+	leaveRemaining := func() int {
+		t.Helper()
+		code, out := call("GET", "/api/balances", demoEmployee, nil)
+		if code != http.StatusOK {
+			t.Fatalf("balances: %d %v", code, out)
+		}
+		return int(out["data"].(map[string]any)["leave"].(map[string]any)["remaining"].(float64))
+	}
+	if got := workingDays("2031-05-02", "2031-05-05"); got != 2 {
+		t.Fatalf("Friday to Monday = %d working days, want 2", got)
+	}
+	if code, _ := call("GET", "/api/leaves/working-days?from=2031-05-05&to=2031-05-02", demoEmployee, nil); code != http.StatusBadRequest {
+		t.Fatalf("reversed range should be 400, got %d", code)
+	}
+	if code, _ := call("POST", "/api/leaves/request", demoEmployee, map[string]string{
+		"from_date": "2031-05-03", "to_date": "2031-05-04", "leave_type": "CASUAL", "reason": "weekend",
+	}); code != http.StatusBadRequest {
+		t.Fatalf("a weekend-only request should be 400, got %d", code)
+	}
+
+	if code, out := call("POST", "/api/admin/holidays", admin, map[string]string{
+		"date": "2031-05-05", "description": "Test holiday",
+	}); code != http.StatusOK && code != http.StatusCreated {
+		t.Fatalf("add holiday: %d %v", code, out)
+	}
+	if got := workingDays("2031-05-02", "2031-05-05"); got != 1 {
+		t.Fatalf("with the Monday a holiday = %d working days, want 1", got)
+	}
+
+	balanceBefore := leaveRemaining()
+	if _, out := call("POST", "/api/leaves/request", demoEmployee, map[string]string{
+		"from_date": "2031-05-02", "to_date": "2031-05-05", "leave_type": "CASUAL", "reason": "long weekend",
+	}); status(out) != "AUTO_APPROVED" {
+		t.Fatalf("one working day should be auto-approved: %v", out)
+	}
+	var leaveID int64
+	var storedDays int
+	if err := app.Pool.QueryRow(context.Background(),
+		"SELECT id, days FROM leave_requests WHERE from_date = '2031-05-02'").Scan(&leaveID, &storedDays); err != nil {
+		t.Fatal(err)
+	}
+	if storedDays != 1 || leaveRemaining() != balanceBefore-1 {
+		t.Fatalf("stored days = %d, balance %d -> %d; want 1 and a drop of 1", storedDays, balanceBefore, leaveRemaining())
+	}
+
+	// Removing the holiday later must not change what cancelling gives back.
+	if _, err := app.Pool.Exec(context.Background(), "DELETE FROM holidays WHERE holiday_date = '2031-05-05'"); err != nil {
+		t.Fatal(err)
+	}
+	if code, out := call("POST", fmt.Sprintf("/api/leaves/%d/cancel", leaveID), demoEmployee, nil); code != http.StatusOK {
+		t.Fatalf("cancel: %d %v", code, out)
+	}
+	if got := leaveRemaining(); got != balanceBefore {
+		t.Fatalf("balance after cancel = %d, want the original %d", got, balanceBefore)
+	}
 }

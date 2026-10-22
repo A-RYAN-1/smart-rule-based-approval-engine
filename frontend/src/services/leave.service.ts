@@ -4,6 +4,8 @@ import { RawBalances } from '@/services/balance.service';
 import { LeaveRequest, LeaveBalance } from '@/types';
 import { transformLeaveRequest } from '@/lib/transformers';
 
+const num = (v: unknown): number => (typeof v === 'number' ? v : Number(v) || 0);
+
 // API request interface (snake_case)
 interface CreateLeaveRequestPayload {
     from_date: string;
@@ -29,6 +31,11 @@ export const leaveService = {
         };
         const response = await api.post<unknown>('/leaves/request', apiPayload);
         return transformLeaveRequest(unwrap<RawRecord>(response.data));
+    },
+
+    async getWorkingDays(fromDate: string, toDate: string): Promise<number> {
+        const response = await api.get<unknown>('/leaves/working-days', { params: { from: fromDate, to: toDate } });
+        return num(unwrap<RawRecord>(response.data).days);
     },
 
     async cancelLeave(id: number): Promise<void> {

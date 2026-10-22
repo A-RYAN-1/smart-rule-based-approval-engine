@@ -123,6 +123,7 @@ type HolidayRepository interface {
 	GetHolidays(ctx context.Context) ([]map[string]interface{}, error)
 	DeleteHoliday(ctx context.Context, holidayID int64) error
 	IsHoliday(ctx context.Context, date time.Time) (bool, error)
+	GetHolidayDatesBetween(ctx context.Context, from, to time.Time) ([]time.Time, error)
 }
 
 // MyRequestsRepository handles read-only queries for a user's own requests
@@ -152,7 +153,8 @@ type AuthService interface {
 }
 
 type LeaveService interface {
-	ApplyLeave(ctx context.Context, userID int64, from time.Time, to time.Time, days int, leaveType string, reason string) (string, string, error)
+	ApplyLeave(ctx context.Context, userID int64, from time.Time, to time.Time, leaveType string, reason string) (string, string, error)
+	CountLeaveDays(ctx context.Context, from, to time.Time) (int, error)
 	CancelLeave(ctx context.Context, userID, requestID int64) error
 }
 

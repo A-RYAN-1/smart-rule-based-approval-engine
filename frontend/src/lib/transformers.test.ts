@@ -89,6 +89,11 @@ describe('Transformers', () => {
       expect(result.userName).toBe('Fallback Name');
     });
 
+    it('should carry the server-counted working days', () => {
+      expect(transformLeaveRequest({ ...mockLeaveData, days: 2 }).days).toBe(2);
+      expect(transformLeaveRequest(mockLeaveData).days).toBeUndefined();
+    });
+
     it('should parse dates correctly', () => {
       const result = transformLeaveRequest(mockLeaveData);
       

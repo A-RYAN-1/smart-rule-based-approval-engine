@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	helperQueryGetMyLeaves = `SELECT id, leave_type, from_date, to_date, status, reason, approval_comment, created_at
+	helperQueryGetMyLeaves = `SELECT id, leave_type, from_date, to_date, days, status, reason, approval_comment, created_at
 		 FROM leave_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`
@@ -66,7 +66,8 @@ const (
 		COUNT(*) FILTER (WHERE status_text='AUTO_APPROVED')
 	FROM (SELECT status::text AS status_text FROM discount_requests) d
 	`
-	helperQueryIsHoliday = `SELECT COUNT(*) FROM holidays WHERE holiday_date=$1`
+	helperQueryIsHoliday           = `SELECT COUNT(*) FROM holidays WHERE holiday_date=$1`
+	helperQueryHolidayDatesBetween = `SELECT holiday_date FROM holidays WHERE holiday_date BETWEEN $1 AND $2`
 )
 
 type myRequestsRepository struct {
@@ -103,6 +104,7 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			leaveType string
 			fromDate  time.Time
 			toDate    time.Time
+			days      int
 			status    string
 			reason    string
 			comment   *string
@@ -114,6 +116,7 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			&leaveType,
 			&fromDate,
 			&toDate,
+			&days,
 			&status,
 			&reason,
 			&comment,
@@ -127,6 +130,7 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			"leave_type": leaveType,
 			"from_date":  fromDate.Format("2006-01-02"),
 			"to_date":    toDate.Format("2006-01-02"),
+			"days":       days,
 			"status":     status,
 			"reason":     reason,
 			"created_at": createdAt.Format(time.RFC3339),
@@ -308,6 +312,25 @@ func (r *holidayRepository) GetHolidays(ctx context.Context) ([]map[string]inter
 	}
 
 	return result, nil
+}
+
+func (r *holidayRepository) GetHolidayDatesBetween(ctx context.Context, from, to time.Time) ([]time.Time, error) {
+	rows, err := r.db.Query(ctx, helperQueryHolidayDatesBetween, from, to)
+	if err != nil {
+		return nil, utils.MapPgError(err)
+	}
+	defer rows.Close()
+
+	var dates []time.Time
+	for rows.Next() {
+		var d time.Time
+		if err := rows.Scan(&d); err != nil {
+			return nil, utils.MapPgError(err)
+		}
+		dates = append(dates, d)
+	}
+
+	return dates, utils.MapPgError(rows.Err())
 }
 
 func (r *holidayRepository) DeleteHoliday(ctx context.Context, holidayID int64) error {

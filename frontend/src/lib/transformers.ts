@@ -63,6 +63,7 @@ export const transformLeaveRequest = (data: RawRecord): LeaveRequest => {
         userName: firstString(data, USER_NAME_KEYS),
         fromDate: safeExtractDate(data, FROM_DATE_KEYS) || FALLBACK_DATE,
         toDate: safeExtractDate(data, TO_DATE_KEYS) || FALLBACK_DATE,
+        days: data.days === undefined || data.days === null ? undefined : num(data.days),
         leaveType: (firstString(data, ['leave_type', 'leaveType']) ?? 'CASUAL') as LeaveType,
         reason: reason || 'No reason found',
         status: normalizeStatus(str(data.status)),

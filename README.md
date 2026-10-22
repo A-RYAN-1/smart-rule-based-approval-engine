@@ -103,7 +103,8 @@ whatever a visitor changes with the admin account is undone. You can also sign u
 
 ## Features
 
-- **Three request types**: leave (calendar days, from and to inclusive), expense (amount and
+- **Three request types**: leave (working days, from and to inclusive; weekends and admin-set
+  holidays are not counted), expense (amount and
   category) and discount (percentage), each with a balance per employee.
 - **Rules engine**: one rule per request type and grade, stored as JSON conditions such as
   `{"max_days": 3}`, `{"max_amount": 5000}` or `{"max_percent": 10}`. Inside the limit:
@@ -236,7 +237,7 @@ API reference: [`backend/api/swagger.yaml`](backend/api/swagger.yaml) and the Po
 
 | Area | What is in place |
 |---|---|
-| Tests | Go unit tests for services (with mocks), config, JWT and rule helpers; an integration test of the main flow on a real, empty Postgres (migrations, seed, sign-up, auto-approval, manager approval, role checks, cron auth, demo logins, demo rule reset). In all 73 Go test cases (with subtests) and 107 frontend Vitest tests, all passing on 2026-10-15 |
+| Tests | Go unit tests for services (with mocks), config, JWT and rule helpers; an integration test of the main flow on a real, empty Postgres (migrations, seed, sign-up, auto-approval, manager approval, role checks, cron auth, demo logins, demo rule reset). In all 90 Go test cases (with subtests) and 112 frontend Vitest tests, all passing on 2026-10-22 |
 | CI | GitHub Actions on every push: `go vet`, `gofmt`, unit and integration tests with Postgres as a service container, `govulncheck`, frontend lint, tests and build ([ci.yml](.github/workflows/ci.yml)) |
 | Uptime | A daily GitHub Actions check of the live site and its database ([uptime.yml](.github/workflows/uptime.yml)) |
 | Security | Signing key from `JWT_SECRET` (32+ characters, validated); token in an httpOnly, Secure, SameSite=Lax cookie; roles checked on the server; admin and manager accounts only from the seed, never from sign-up; CORS limited to configured origins; HSTS and X-Frame-Options headers; the cron endpoint requires `CRON_SECRET` |
@@ -350,14 +351,13 @@ runs the nightly job in-process.
 
 **Known limitations**
 
-- Leave is counted in calendar days, so a request over a weekend uses weekend days from the balance.
+- Requests made before 2026-10-22 keep the calendar-day count they were applied with.
 - Lighthouse and accessibility checks cover the sign-in page only; the pages behind login have not been audited.
 - The first request after a quiet period waits for a function cold start.
 
 **Planned**
 
 - [ ] Audit the pages behind login for accessibility and performance
-- [ ] Count leave in working days (the helper `CountWorkingDays` exists; balances do not use it yet)
 
 ## Contributors
 

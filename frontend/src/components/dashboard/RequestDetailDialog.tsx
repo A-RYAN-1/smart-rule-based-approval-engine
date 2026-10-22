@@ -79,6 +79,12 @@ export function RequestDetailDialog({ isOpen, onClose, request }: RequestDetailD
                                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Period</span>
                                         <span className="text-sm font-black">{format(new Date(request.fromDate), 'MMM d')} — {format(new Date(request.toDate), 'MMM d, yyyy')}</span>
                                     </div>
+                                    {request.days !== undefined && (
+                                        <div className="flex justify-between items-center bg-muted/10 p-2.5 rounded-xl border border-border/30">
+                                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Days</span>
+                                            <span className="text-sm font-black">{request.days}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between items-center bg-muted/10 p-2.5 rounded-xl border border-border/30">
                                         <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Leave Type</span>
                                         <Badge variant="outline" className="font-bold border-primary/20 text-primary">{request.leaveType}</Badge>

@@ -75,6 +75,7 @@ func Register(
 			leaves.POST("/request", leaveHandler.ApplyLeave) // Alias for apply
 			leaves.POST("/:id/cancel", leaveHandler.CancelLeave)
 			leaves.GET("/my", myRequestsHandler.GetMyLeaves)
+			leaves.GET("/working-days", leaveHandler.CountDays)
 
 			// Approval routes
 			leaves.GET("/pending", leaveApprovalHandler.GetPendingLeaves)

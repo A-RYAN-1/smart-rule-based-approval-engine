@@ -17,6 +17,7 @@ type LeaveService struct {
 	balanceRepo  interfaces.BalanceRepository
 	ruleService  interfaces.RuleService
 	userRepo     interfaces.UserRepository
+	holidayRepo  interfaces.HolidayRepository
 	db           interfaces.DB
 }
 
@@ -27,6 +28,7 @@ func NewLeaveService(
 	balanceRepo interfaces.BalanceRepository,
 	ruleService interfaces.RuleService,
 	userRepo interfaces.UserRepository,
+	holidayRepo interfaces.HolidayRepository,
 	db interfaces.DB,
 ) interfaces.LeaveService {
 	return &LeaveService{
@@ -34,8 +36,31 @@ func NewLeaveService(
 		balanceRepo:  balanceRepo,
 		ruleService:  ruleService,
 		userRepo:     userRepo,
+		holidayRepo:  holidayRepo,
 		db:           db,
 	}
+}
+
+// CountLeaveDays counts the days a leave from..to uses: Monday to Friday,
+// minus the holidays the admin has defined.
+func (s *LeaveService) CountLeaveDays(ctx context.Context, from, to time.Time) (int, error) {
+	if from.After(to) {
+		return 0, apperrors.ErrInvalidDateRange
+	}
+
+	dates, err := s.holidayRepo.GetHolidayDatesBetween(ctx, from, to)
+	if err != nil {
+		return 0, err
+	}
+
+	holidays := make(map[string]bool, len(dates))
+	for _, d := range dates {
+		holidays[d.Format("2006-01-02")] = true
+	}
+
+	return utils.CountWorkingDays(from, to, func(d time.Time) bool {
+		return holidays[d.Format("2006-01-02")]
+	}), nil
 }
 
 // processes a leave application
@@ -44,7 +69,6 @@ func (s *LeaveService) ApplyLeave(
 	userID int64,
 	from time.Time,
 	to time.Time,
-	days int,
 	leaveType string,
 	reason string,
 ) (string, string, error) {
@@ -53,12 +77,13 @@ func (s *LeaveService) ApplyLeave(
 		return "", "", apperrors.ErrInvalidUser
 	}
 
-	if days <= 0 {
-		return "", "", apperrors.ErrInvalidLeaveDays
+	days, err := s.CountLeaveDays(ctx, from, to)
+	if err != nil {
+		return "", "", err
 	}
 
-	if from.After(to) {
-		return "", "", apperrors.ErrInvalidDateRange
+	if days <= 0 {
+		return "", "", apperrors.ErrInvalidLeaveDays
 	}
 
 	// date validation
@@ -114,6 +139,7 @@ func (s *LeaveService) ApplyLeave(
 		EmployeeID: userID,
 		FromDate:   from,
 		ToDate:     to,
+		Days:       days,
 		Reason:     reason,
 		LeaveType:  leaveType,
 		Status:     status,
@@ -163,7 +189,7 @@ func (s *LeaveService) CancelLeave(ctx context.Context, userID, requestID int64)
 		return err
 	}
 
-	days := utils.CalculateLeaveDays(leaveReq.FromDate, leaveReq.ToDate)
+	days := leaveReq.Days
 
 	err = s.leaveReqRepo.Cancel(ctx, tx, requestID)
 	if err != nil {
@@ -262,7 +288,7 @@ func (s *LeaveApprovalService) ApproveLeave(
 		return err
 	}
 
-	days := utils.CalculateLeaveDays(leaveReq.FromDate, leaveReq.ToDate)
+	days := leaveReq.Days
 
 	// Deduct leave balance
 	err = s.balanceRepo.DeductLeaveBalance(ctx, tx, leaveReq.EmployeeID, days)

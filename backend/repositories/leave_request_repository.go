@@ -15,9 +15,9 @@ import (
 
 const (
 	leaveQueryCreate = `INSERT INTO leave_requests
-		 (employee_id, from_date, to_date, reason, leave_type, status, rule_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`
-	leaveQueryGetByID = `SELECT employee_id, status, from_date, to_date
+		 (employee_id, from_date, to_date, days, reason, leave_type, status, rule_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+	leaveQueryGetByID = `SELECT employee_id, status, from_date, to_date, days
 		 FROM leave_requests
 		 WHERE id=$1`
 	leaveQueryUpdateStatus = `UPDATE leave_requests
@@ -25,14 +25,14 @@ const (
 		     approved_by_id=$2,
 		     approval_comment=$3
 		 WHERE id=$4`
-	leaveQueryGetPendingForManager = `SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at 
+	leaveQueryGetPendingForManager = `SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.days, lr.leave_type, lr.reason, lr.created_at 
 		 FROM leave_requests lr
 		 JOIN users u ON lr.employee_id = u.id
 		 WHERE lr.status='PENDING'
 		   AND u.manager_id=$1
 		 ORDER BY lr.created_at DESC
 		 LIMIT $2 OFFSET $3`
-	leaveQueryGetPendingForAdmin = `SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.leave_type, lr.reason, lr.created_at
+	leaveQueryGetPendingForAdmin = `SELECT lr.id, lr.employee_id, u.name, lr.from_date, lr.to_date, lr.days, lr.leave_type, lr.reason, lr.created_at
 		 FROM leave_requests lr
 		 JOIN users u ON lr.employee_id = u.id
 		 WHERE lr.status='PENDING'
@@ -66,6 +66,7 @@ func (r *leaveRequestRepository) Create(ctx context.Context, tx interfaces.Tx, r
 		req.EmployeeID,
 		req.FromDate,
 		req.ToDate,
+		req.Days,
 		req.Reason,
 		req.LeaveType,
 		req.Status,
@@ -82,7 +83,7 @@ func (r *leaveRequestRepository) GetByID(ctx context.Context, tx interfaces.Tx, 
 		ctx,
 		leaveQueryGetByID,
 		requestID,
-	).Scan(&req.EmployeeID, &req.Status, &req.FromDate, &req.ToDate)
+	).Scan(&req.EmployeeID, &req.Status, &req.FromDate, &req.ToDate, &req.Days)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -129,6 +130,7 @@ func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, manag
 			id         int64
 			employeeID int64
 			name       string
+			days       int
 			leaveType  string
 			reason     string
 			fromDate   time.Time
@@ -136,7 +138,7 @@ func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, manag
 			createdAt  time.Time
 		)
 
-		if err := rows.Scan(&id, &employeeID, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
+		if err := rows.Scan(&id, &employeeID, &name, &fromDate, &toDate, &days, &leaveType, &reason, &createdAt); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
 
@@ -146,6 +148,7 @@ func (r *leaveRequestRepository) GetPendingForManager(ctx context.Context, manag
 			"employee":   name,
 			"from_date":  fromDate.Format("2006-01-02"),
 			"to_date":    toDate.Format("2006-01-02"),
+			"days":       days,
 			"leave_type": leaveType,
 			"reason":     reason,
 			"status":     "PENDING", // Since query filters by PENDING
@@ -180,6 +183,7 @@ func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context, limit, 
 			id         int64
 			employeeID int64
 			name       string
+			days       int
 			leaveType  string
 			reason     string
 			fromDate   time.Time
@@ -187,7 +191,7 @@ func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context, limit, 
 			createdAt  time.Time
 		)
 
-		if err := rows.Scan(&id, &employeeID, &name, &fromDate, &toDate, &leaveType, &reason, &createdAt); err != nil {
+		if err := rows.Scan(&id, &employeeID, &name, &fromDate, &toDate, &days, &leaveType, &reason, &createdAt); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
 
@@ -197,6 +201,7 @@ func (r *leaveRequestRepository) GetPendingForAdmin(ctx context.Context, limit, 
 			"employee":   name,
 			"from_date":  fromDate.Format("2006-01-02"),
 			"to_date":    toDate.Format("2006-01-02"),
+			"days":       days,
 			"leave_type": leaveType,
 			"reason":     reason,
 			"status":     "PENDING",

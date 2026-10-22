@@ -9,7 +9,6 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/apperrors"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/response"
-	"github.com/ankita-advitot/rule_based_approval_engine/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,15 +48,9 @@ func (h *LeaveHandler) ApplyLeave(c *gin.Context) {
 		return
 	}
 
-	days := utils.CalculateLeaveDays(from, to)
-	if days <= 0 {
-		handleApplyLeaveError(c, apperrors.ErrInvalidLeaveDays)
-		return
-	}
-
 	ctx := c.Request.Context()
 	message, status, err := h.leaveService.ApplyLeave(
-		ctx, userID, from, to, days, req.LeaveType, req.Reason,
+		ctx, userID, from, to, req.LeaveType, req.Reason,
 	)
 
 	if err != nil {
@@ -70,12 +63,37 @@ func (h *LeaveHandler) ApplyLeave(c *gin.Context) {
 	})
 }
 
+// CountDays answers how many days a leave from..to would use, so the form
+// shows the number that will be deducted.
+func (h *LeaveHandler) CountDays(c *gin.Context) {
+	from, err := time.Parse("2006-01-02", c.Query("from"))
+	if err != nil {
+		handleApplyLeaveError(c, apperrors.ErrInvalidDateFormat)
+		return
+	}
+
+	to, err := time.Parse("2006-01-02", c.Query("to"))
+	if err != nil {
+		handleApplyLeaveError(c, apperrors.ErrInvalidDateFormat)
+		return
+	}
+
+	days, err := h.leaveService.CountLeaveDays(c.Request.Context(), from, to)
+	if err != nil {
+		handleApplyLeaveError(c, err)
+		return
+	}
+
+	response.Success(c, "", gin.H{"days": days})
+}
+
 func handleApplyLeaveError(c *gin.Context, err error) {
 	status := http.StatusInternalServerError
 	switch err {
 	case apperrors.ErrLeaveBalanceExceeded, apperrors.ErrInvalidLeaveDays,
 		apperrors.ErrLeaveOverlap, apperrors.ErrPastDate,
-		apperrors.ErrInvalidDateFormat, apperrors.ErrInvalidRequestPayload:
+		apperrors.ErrInvalidDateFormat, apperrors.ErrInvalidRequestPayload,
+		apperrors.ErrInvalidDateRange:
 		status = http.StatusBadRequest
 	case apperrors.ErrUserNotFound, apperrors.ErrLeaveBalanceMissing:
 		status = http.StatusNotFound

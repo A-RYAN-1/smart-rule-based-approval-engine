@@ -7,7 +7,7 @@ import (
 
 // PromptVersion names the prompt below. Bump it whenever the text changes so
 // an evaluation result can be tied to the exact prompt that produced it.
-const PromptVersion = "rule-draft-v1"
+const PromptVersion = "rule-draft-v2"
 
 // Grade is one row of the grades table as the prompt shows it.
 type Grade struct {
@@ -36,9 +36,12 @@ or, when the sentence cannot be turned into exactly one such rule:
 {"ok": false, "reason": "<one short sentence>"}
 
 Rules for the answer:
+- Setting, raising, lowering or cutting a limit to a stated number ("raise the
+  grade 2 expense limit to 12000") is a valid rule: use that number as the value.
 - Use ok=false when the type, the grade or the number is missing or ambiguous,
-  when the sentence names several types or grades, when it asks to reject,
-  delete or change anything other than a limit, or when it is not about rules.
+  when the sentence names several types or grades, when it asks to reject or
+  delete rules, when it changes something other than a limit, or when it is not
+  about rules.
 - Amounts are rupees: read "5k" as 5000, "2 lakh" as 200000.
 - A week is 5 working days only when the sentence says "week"; "days" are days.
 - Never invent a grade or a number the sentence does not give.

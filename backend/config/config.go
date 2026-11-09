@@ -87,7 +87,7 @@ func FromEnv(getenv func(string) string) (*Config, error) {
 		SeedEmployeePassword: getenv("SEED_EMPLOYEE_PASSWORD"),
 		DemoMode:             get("DEMO_MODE", "false") == "true",
 		GeminiAPIKey:         getenv("GEMINI_API_KEY"),
-		GeminiModel:          get("GEMINI_MODEL", "gemini-2.5-flash-lite"),
+		GeminiModel:          get("GEMINI_MODEL", "gemini-3.5-flash-lite"),
 	}
 
 	cfg.RuleDraftDailyLimit = 100

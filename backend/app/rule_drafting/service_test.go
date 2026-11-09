@@ -276,3 +276,15 @@ func TestEvaluateCountsMisses(t *testing.T) {
 		t.Fatalf("unexpected report %+v", *rep)
 	}
 }
+
+// A provider failure must stop the run, never be scored as a refusal.
+func TestEvaluateStopsOnProviderFailure(t *testing.T) {
+	set, _ := LoadEvalSet()
+	rep, err := Evaluate(context.Background(), &fakeProvider{err: errors.New("status 404")}, set)
+	if err == nil {
+		t.Fatal("expected the run to stop with an error")
+	}
+	if rep.ExactMatch != 0 || rep.RejectsKept != 0 {
+		t.Fatalf("a failed call was scored: %+v", *rep)
+	}
+}

@@ -323,7 +323,7 @@ Backend: `backend/.env.example` lists each one with an explanation.
 | `PORT` | no (default `8080`) | Port of the local server. |
 | `RUN_CRON` | no (default `true`) | Run the nightly job inside the local server. |
 | `GEMINI_API_KEY` | no | Turns on rule drafting (free Gemini key). Empty switches the feature off and hides the box. |
-| `GEMINI_MODEL` | no (default `gemini-2.5-flash-lite`) | Model used for drafting. |
+| `GEMINI_MODEL` | no (default `gemini-3.5-flash-lite`) | Model used for drafting. |
 | `RULE_DRAFT_DAILY_LIMIT` | no (default `100`) | Model calls allowed per UTC day per server instance; `0` switches drafting off. |
 
 Frontend (`frontend/.env.example`): `VITE_API_URL`, empty by default, so the app calls `/api` on its

@@ -2,6 +2,14 @@ import api, { unwrap, RawAllRequests, RawRecord } from '@/lib/api';
 import { Holiday, ApprovalRule, StatusDistribution, RequestTypeReport, LeaveRequest, ExpenseRequest, DiscountRequest, DashboardSummary } from '@/types';
 import { transformHoliday, transformApprovalRule, transformLeaveRequest, transformExpenseRequest, transformDiscountRequest } from '@/lib/transformers';
 
+/** A proposed rule from the drafting endpoint. Nothing is saved until confirmed. */
+export interface RuleDraft {
+    rule: { request_type: string; grade_id: number; condition: Record<string, number>; action: string };
+    grade_name: string;
+    change: { field: string; before: number | null; after: number };
+    prompt_version: string;
+}
+
 export const adminService = {
     // Holidays
     async getHolidays(limit = 10, offset = 0): Promise<Holiday[]> {
@@ -45,6 +53,16 @@ export const adminService = {
             active: rule.isActive ?? true
         };
         await api.put(`/admin/rules/${id}`, apiPayload);
+    },
+
+    async ruleDraftingEnabled(): Promise<boolean> {
+        const response = await api.get<unknown>('/admin/rules/draft/status');
+        return unwrap<{ enabled?: boolean }>(response.data).enabled === true;
+    },
+
+    async draftRule(sentence: string): Promise<RuleDraft> {
+        const response = await api.post<unknown>('/admin/rules/draft', { sentence });
+        return unwrap<RuleDraft>(response.data);
     },
 
     async deleteRule(id: number): Promise<void> {

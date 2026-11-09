@@ -30,6 +30,7 @@ import { Shield, Plus, Trash2, Zap, CheckCircle2, XCircle, Users, Edit } from 'l
 import { RequestType, ApprovalRule, RuleCondition } from '@/types';
 import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { RuleDrafter } from '@/components/RuleDrafter';
 
 export default function RulesManagementPage() {
   const { user } = useAuth();
@@ -207,6 +208,10 @@ export default function RulesManagementPage() {
             {/* Add Rule button removed as per reduced scope */}
           </div>
         </div>
+
+        <RuleDrafter
+          onConfirm={(rule) => addRule(rule as Partial<ApprovalRule>) as Promise<void>}
+        />
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

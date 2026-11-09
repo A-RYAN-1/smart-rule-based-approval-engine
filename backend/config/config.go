@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -46,6 +47,12 @@ type Config struct {
 	// DemoMode publishes the seed logins at /api/demo-logins (shown on the
 	// login page) and makes the cron run restore the default rules.
 	DemoMode bool
+	// GeminiAPIKey enables natural-language rule drafting; empty switches it off.
+	GeminiAPIKey string
+	// GeminiModel is the Gemini model used for drafting.
+	GeminiModel string
+	// RuleDraftDailyLimit caps model calls per UTC day (per server instance).
+	RuleDraftDailyLimit int
 }
 
 // Load reads .env (if present, for local runs) and then the environment.
@@ -79,6 +86,17 @@ func FromEnv(getenv func(string) string) (*Config, error) {
 		SeedManagerPassword:  getenv("SEED_MANAGER_PASSWORD"),
 		SeedEmployeePassword: getenv("SEED_EMPLOYEE_PASSWORD"),
 		DemoMode:             get("DEMO_MODE", "false") == "true",
+		GeminiAPIKey:         getenv("GEMINI_API_KEY"),
+		GeminiModel:          get("GEMINI_MODEL", "gemini-2.5-flash-lite"),
+	}
+
+	cfg.RuleDraftDailyLimit = 100
+	if v := get("RULE_DRAFT_DAILY_LIMIT", ""); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 0 {
+			return nil, errors.New("invalid configuration: RULE_DRAFT_DAILY_LIMIT must be a whole number, 0 or more")
+		}
+		cfg.RuleDraftDailyLimit = n
 	}
 
 	var problems []string

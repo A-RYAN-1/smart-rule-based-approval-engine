@@ -17,7 +17,7 @@ type RuleService struct {
 }
 
 // NewRuleService creates a new instance of RuleService
-func NewRuleService(ctx context.Context, ruleRepo interfaces.RuleRepository, gradeRepo interfaces.GradeRepository, db interfaces.DB) interfaces.RuleService {
+func NewRuleService(ctx context.Context, ruleRepo interfaces.RuleRepository, gradeRepo interfaces.GradeRepository, db interfaces.DB) *RuleService {
 	return &RuleService{
 		ruleRepo:  ruleRepo,
 		gradeRepo: gradeRepo,
@@ -77,6 +77,11 @@ func (s *RuleService) DeleteRule(ctx context.Context, role string, ruleID int64)
 	}
 
 	return s.ruleRepo.Delete(ctx, ruleID)
+}
+
+// ValidateRule checks a rule against the grade limits without saving it.
+func (s *RuleService) ValidateRule(ctx context.Context, rule models.Rule) error {
+	return s.validateRule(ctx, rule)
 }
 
 func (s *RuleService) validateRule(ctx context.Context, rule models.Rule) error {

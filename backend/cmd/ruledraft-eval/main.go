@@ -2,12 +2,13 @@
 // checked-in evaluation set using the real model and prints the exact-match
 // result. It needs GEMINI_API_KEY and spends free-tier calls: one per case.
 //
-//	GEMINI_API_KEY=... go run ./cmd/ruledraft-eval [-model gemini-2.5-flash-lite] [-out result.json]
+//	GEMINI_API_KEY=... go run ./cmd/ruledraft-eval [-model gemini-3.5-flash-lite] [-out result.json]
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -17,7 +18,7 @@ import (
 )
 
 func main() {
-	model := flag.String("model", "gemini-2.5-flash-lite", "Gemini model name")
+	model := flag.String("model", "gemini-3.5-flash-lite", "Gemini model name")
 	out := flag.String("out", "", "write the full report as JSON to this file")
 	pause := flag.Duration("pause", 5*time.Second, "wait between calls to stay inside the free-tier rate limit")
 	flag.Parse()
@@ -69,6 +70,14 @@ type pausing struct {
 }
 
 func (p *pausing) Complete(ctx context.Context, system, user string) (string, error) {
-	time.Sleep(p.gap)
-	return p.inner.Complete(ctx, system, user)
+	var lastErr error
+	for attempt := 0; attempt < 4; attempt++ {
+		time.Sleep(p.gap * time.Duration(attempt+1))
+		out, err := p.inner.Complete(ctx, system, user)
+		if err == nil || errors.Is(err, rule_drafting.ErrProviderQuota) {
+			return out, err
+		}
+		lastErr = err // a 5xx from the provider is usually brief; try again
+	}
+	return "", lastErr
 }

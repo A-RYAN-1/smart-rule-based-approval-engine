@@ -127,8 +127,10 @@ func Evaluate(ctx context.Context, p Provider, set *EvalSet) (*Report, error) {
 	for _, c := range set.Cases {
 		res := CaseResult{Sentence: c.Sentence}
 		draft, err := svc.Draft(ctx, "ADMIN", c.Sentence)
-		if errors.Is(err, ErrProviderQuota) {
-			return rep, err
+		if err != nil && !isRefusal(err) {
+			// A provider or network failure says nothing about the model's
+			// answer; counting it as a refusal would inflate the score.
+			return rep, fmt.Errorf("case %q: %w", c.Sentence, err)
 		}
 		if c.Expect.Reject {
 			rep.Rejects++
@@ -163,4 +165,11 @@ func Evaluate(ctx context.Context, p Provider, set *EvalSet) (*Report, error) {
 
 func describe(d *Draft) string {
 	return fmt.Sprintf("%s grade %d value %g", d.Rule.RequestType, d.Rule.GradeID, d.Change.After)
+}
+
+// isRefusal reports whether err means the model or the validator declined the
+// sentence, as opposed to the call itself failing.
+func isRefusal(err error) bool {
+	return errors.Is(err, ErrUnclear) || errors.Is(err, ErrBadModelReply) ||
+		errors.Is(err, apperrors.ErrQuotaExceeded) || errors.Is(err, apperrors.ErrNegativeValue)
 }

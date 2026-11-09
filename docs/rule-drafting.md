@@ -17,7 +17,7 @@ than auto-approve.
 ## How it works
 
 1. `POST /api/admin/rules/draft` with `{"sentence": "..."}` (admin only, 300 characters at most).
-2. The server lists the grades and builds the prompt (`prompt.go`, version `rule-draft-v1`).
+2. The server lists the grades and builds the prompt (`prompt.go`, version `rule-draft-v2`).
 3. The model replies with JSON: `{ok, request_type, grade_id, value}` or `{ok: false, reason}`.
 4. The server rejects anything else: unknown fields, a type or grade that does not exist, a value that
    is not positive, fractional leave days.
@@ -58,8 +58,23 @@ an off-topic question). A case passes only when every field matches exactly.
 
 | Date | Model | Prompt | Exact match | Rule cases | Refusals |
 |---|---|---|---|---|---|
-| not yet run | | rule-draft-v1 | | | |
+| 2026-11-09 | gemini-3.5-flash-lite | rule-draft-v1 | 46/50 | 36/40 | 10/10 |
+| 2026-11-09 | gemini-3.5-flash-lite | rule-draft-v2 | 49/50 | 39/40 | 10/10 |
 
 ## Rollback
 
 Unset `GEMINI_API_KEY`. The endpoint answers 503 and the box disappears; nothing else depends on it.
+
+## What the runs showed
+
+- v1 refused four sentences of the form "raise / lower / cut the limit to X": its wording told the model
+  to refuse "changes". v2 states that setting, raising or lowering a limit is a valid rule. Three of the
+  four now pass. Those four sentences were used to fix the wording, so the v2 score on them is not an
+  untouched test; the other 46 are. The one miss left is "raise the grade 1 discount limit to 8%".
+- The 10 refusal cases (missing grade or number, two rules, delete or reject, over the grade limit,
+  prompt injection, off-topic) were all refused on both prompts.
+- 50 sentences is a small set from one author: it shows the approach works, not a production accuracy
+  figure. Provider errors stop a run; they are never scored as refusals (the first run on a retired model
+  name would otherwise have reported 10/10 refusals).
+- Models: `gemini-2.5-*` is closed to new keys (404); the default is `gemini-3.5-flash-lite`.
+

@@ -36,7 +36,7 @@
   </a>
 </p>
 
-<p align="center"><sub>Last updated: 2026-10-15 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
+<p align="center"><sub>Last updated: 2026-11-09 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
 
 ---
 
@@ -97,7 +97,10 @@ whatever a visitor changes with the admin account is undone. You can also sign u
   </tr>
   <tr>
     <td width="50%"><img src="docs/images/pending-approvals.png" alt="Manager's queue of requests awaiting review"><p align="center"><sub>Manager: requests the rules sent for review</sub></p></td>
-    <td width="50%"><img src="docs/images/admin-rules.png" alt="Admin rules management: one rule per request type and grade"><p align="center"><sub>Admin: one rule per request type and grade</sub></p></td>
+    <td width="50%"><img src="docs/images/admin-rules.png" alt="Admin rules management with the rule drafting box above the rules"><p align="center"><sub>Admin: one rule per request type and grade, with the drafting box on top</sub></p></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/admin-rule-draft.png" alt="A drafted rule shown as a before and after, with Confirm and save and Discard buttons"><p align="center"><sub>Admin: a sentence becomes a draft (expense limit for grade 2, 10000 to 8000) that is saved only on Confirm</sub></p></td>
   </tr>
 </table>
 
@@ -358,6 +361,9 @@ runs the nightly job in-process.
 
 **Known limitations**
 
+- Rule drafting scored 49 of 50 on a 50-sentence set written by one author (2026-11-09, prompt v2); that
+  shows the approach works, not a production accuracy figure. It uses a free model tier with a daily cap,
+  so it can answer "limit reached" on a busy day.
 - Requests made before 2026-10-22 keep the calendar-day count they were applied with.
 - Lighthouse and accessibility checks cover the sign-in page only; the pages behind login have not been audited.
 - The first request after a quiet period waits for a function cold start.

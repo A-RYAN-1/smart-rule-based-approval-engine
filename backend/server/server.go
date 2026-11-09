@@ -20,6 +20,7 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/app/leave_service"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/my_requests"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/reports"
+	"github.com/ankita-advitot/rule_based_approval_engine/app/rule_drafting"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/rules"
 	"github.com/ankita-advitot/rule_based_approval_engine/config"
 	jobs "github.com/ankita-advitot/rule_based_approval_engine/cron-jobs"
@@ -93,6 +94,13 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	autoRejectService := auto_reject.NewAutoRejectService(ctx, leaveRepo, expenseRepo, discountRepo, holidayRepo, db)
 	myRequestsService := my_requests.NewMyRequestsService(ctx, myRequestsRepo)
 
+	var draftProvider rule_drafting.Provider
+	if cfg.GeminiAPIKey != "" {
+		draftProvider = rule_drafting.NewGemini(cfg.GeminiAPIKey, cfg.GeminiModel)
+	}
+	ruleDraftHandler := rule_drafting.NewHandler(rule_drafting.NewService(
+		draftProvider, ruleService, repositories.NewGradeLister(ctx, db), ruleService, cfg.RuleDraftDailyLimit))
+
 	router := gin.New()
 	router.Use(requestID(), requestLog(), gin.CustomRecovery(recovered))
 	if len(cfg.CORSOrigins) > 0 {
@@ -155,7 +163,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	routes.Register(ctx, router,
 		authService, leaveService, expenseService, leaveApprovalService, expenseApprovalService,
 		ruleService, myRequestsService, holidayService, reportService, balanceService,
-		autoRejectService, discountService, discountApprovalService,
+		autoRejectService, discountService, discountApprovalService, ruleDraftHandler,
 	)
 
 	return &App{Router: router, AutoReject: autoRejectService, Pool: pool}, nil

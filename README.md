@@ -115,6 +115,10 @@ whatever a visitor changes with the admin account is undone. You can also sign u
   holidays skipped), at midnight India time.
 - **Roles**: employee, manager and admin, enforced on the server from the signed session token.
   Sign-up only ever creates employees.
+- **Rule drafting (optional)**: an admin types a sentence such as "auto-approve expenses under 5000 for
+  grade 2"; a language model proposes one rule, which is checked against the grade limits and shown as
+  a before and after. Nothing is saved until the admin confirms. Off unless `GEMINI_API_KEY` is set;
+  see [docs/rule-drafting.md](docs/rule-drafting.md).
 - **Admin**: create, edit and disable rules; manage holidays; status and request-type reports; a user
   overview.
 
@@ -318,6 +322,9 @@ Backend: `backend/.env.example` lists each one with an explanation.
 | `GIN_MODE` | no (default `release`) | `release` or `debug`. |
 | `PORT` | no (default `8080`) | Port of the local server. |
 | `RUN_CRON` | no (default `true`) | Run the nightly job inside the local server. |
+| `GEMINI_API_KEY` | no | Turns on rule drafting (free Gemini key). Empty switches the feature off and hides the box. |
+| `GEMINI_MODEL` | no (default `gemini-2.5-flash-lite`) | Model used for drafting. |
+| `RULE_DRAFT_DAILY_LIMIT` | no (default `100`) | Model calls allowed per UTC day per server instance; `0` switches drafting off. |
 
 Frontend (`frontend/.env.example`): `VITE_API_URL`, empty by default, so the app calls `/api` on its
 own origin.

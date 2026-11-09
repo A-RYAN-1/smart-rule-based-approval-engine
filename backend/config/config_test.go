@@ -95,3 +95,23 @@ func TestFromEnvDemoMode(t *testing.T) {
 		t.Fatalf("demo mode should be on: %v, %v", cfg, err)
 	}
 }
+
+func TestFromEnvRuleDrafting(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "postgres://x", "JWT_SECRET": secret}
+	cfg, err := FromEnv(env(base))
+	if err != nil || cfg.GeminiAPIKey != "" || cfg.RuleDraftDailyLimit != 100 || cfg.GeminiModel == "" {
+		t.Fatalf("drafting must default to off with a limit of 100: %+v, %v", cfg, err)
+	}
+	base["GEMINI_API_KEY"] = "k"
+	base["RULE_DRAFT_DAILY_LIMIT"] = "7"
+	cfg, err = FromEnv(env(base))
+	if err != nil || cfg.GeminiAPIKey != "k" || cfg.RuleDraftDailyLimit != 7 {
+		t.Fatalf("unexpected config: %+v, %v", cfg, err)
+	}
+	for _, bad := range []string{"-1", "many"} {
+		base["RULE_DRAFT_DAILY_LIMIT"] = bad
+		if _, err := FromEnv(env(base)); err == nil || !strings.Contains(err.Error(), "RULE_DRAFT_DAILY_LIMIT") {
+			t.Fatalf("%q must be refused: %v", bad, err)
+		}
+	}
+}

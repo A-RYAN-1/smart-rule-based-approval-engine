@@ -1114,6 +1114,60 @@ paths:
                 items:
                   $ref: '#/components/schemas/Rule'
 
+  /api/admin/rules/draft:
+    post:
+      tags:
+        - Admin
+      summary: Draft a rule from a sentence
+      description: >
+        Admin only. Returns a proposed rule and the before and after of its limit.
+        Nothing is saved; save the confirmed rule with POST /api/admin/rules.
+        Returns 503 when GEMINI_API_KEY is not set, 422 when the sentence does not
+        give exactly one rule or the value exceeds the grade limit, 429 at the
+        daily limit.
+      operationId: draftRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sentence]
+              properties:
+                sentence:
+                  type: string
+                  maxLength: 300
+      responses:
+        '200':
+          description: A draft rule
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rule:
+                    $ref: '#/components/schemas/Rule'
+                  grade_name:
+                    type: string
+                  change:
+                    type: object
+                    properties:
+                      field: {type: string}
+                      before: {type: number, nullable: true}
+                      after: {type: number}
+                  prompt_version:
+                    type: string
+
+  /api/admin/rules/draft/status:
+    get:
+      tags:
+        - Admin
+      summary: Whether rule drafting is configured
+      operationId: ruleDraftStatus
+      responses:
+        '200':
+          description: "{enabled: boolean}"
+
   /api/admin/rules/{id}:
     put:
       tags:

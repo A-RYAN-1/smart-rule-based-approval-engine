@@ -55,11 +55,10 @@ type Change struct {
 
 // Draft is what the endpoint returns. Rule is a proposal, never a saved row.
 type Draft struct {
-	Rule          models.Rule  `json:"rule"`
-	GradeName     string       `json:"grade_name"`
-	Existing      *models.Rule `json:"existing"`
-	Change        Change       `json:"change"`
-	PromptVersion string       `json:"prompt_version"`
+	Rule          models.Rule `json:"rule"`
+	GradeName     string      `json:"grade_name"`
+	Change        Change      `json:"change"`
+	PromptVersion string      `json:"prompt_version"`
 }
 
 type Service struct {
@@ -172,7 +171,6 @@ func (s *Service) build(ctx context.Context, grades []Grade, text string) (*Draf
 	draft := &Draft{Rule: rule, GradeName: gradeName, PromptVersion: PromptVersion,
 		Change: Change{Field: field, After: reply.Value}}
 	if existing, err := s.lookup.GetRule(ctx, rule.RequestType, rule.GradeID); err == nil && existing != nil {
-		draft.Existing = existing
 		if before, ok := existing.Condition[field].(float64); ok {
 			draft.Change.Before = &before
 		}

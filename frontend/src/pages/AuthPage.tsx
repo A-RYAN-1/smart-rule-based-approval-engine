@@ -52,7 +52,7 @@ export default function AuthPage() {
     if (!result.success) {
       toast({
         title: 'Validation Error',
-        description: result.error.errors[0].message,
+        description: result.error.issues[0].message,
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -92,7 +92,7 @@ export default function AuthPage() {
     if (!result.success) {
       toast({
         title: 'Validation Error',
-        description: result.error.errors[0].message,
+        description: result.error.issues[0].message,
         variant: 'destructive',
       });
       setIsLoading(false);

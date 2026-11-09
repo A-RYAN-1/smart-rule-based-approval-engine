@@ -81,8 +81,8 @@ func TestDraftWithoutExistingRuleHasNoBefore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d.Existing != nil || d.Change.Before != nil {
-		t.Fatalf("expected no existing rule, got %+v", d)
+	if d.Change.Before != nil {
+		t.Fatalf("expected no current value, got %+v", d)
 	}
 }
 

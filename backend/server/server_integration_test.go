@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
+	apidocs "github.com/ankita-advitot/rule_based_approval_engine/api"
+	"github.com/ankita-advitot/rule_based_approval_engine/api/speccheck"
 	"github.com/ankita-advitot/rule_based_approval_engine/config"
 )
 
@@ -44,6 +47,32 @@ func TestMainFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(app.Pool.Close)
+
+	// The API reference is public, and the spec describes every route the
+	// running server has, including the ones New registers itself.
+	for path, want := range map[string]string{
+		apidocs.UIPath:   "swagger-ui",
+		apidocs.SpecPath: "openapi: 3.0.3",
+	} {
+		rec := httptest.NewRecorder()
+		app.Router.ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), want) {
+			t.Fatalf("GET %s: %d, body lacks %q", path, rec.Code, want)
+		}
+	}
+	var served []string
+	for _, r := range app.Router.Routes() {
+		served = append(served, speccheck.FromGin(r.Method, r.Path))
+	}
+	described, err := speccheck.Operations(apidocs.Spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	undocumented, unserved := speccheck.Diff(described, served,
+		[]string{"GET " + apidocs.UIPath, "GET " + apidocs.SpecPath})
+	if len(undocumented)+len(unserved) > 0 {
+		t.Fatalf("spec drift: served but undocumented %v, documented but not served %v", undocumented, unserved)
+	}
 
 	// Building a second time must be a no-op for migrations and seeding.
 	again, err := New(context.Background(), cfg)

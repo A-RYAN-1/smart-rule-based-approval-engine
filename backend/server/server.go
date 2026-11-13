@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"time"
 
+	apidocs "github.com/ankita-advitot/rule_based_approval_engine/api"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/auth"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/auto_reject"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/domain_service"
@@ -159,6 +160,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 		}
 		c.JSON(http.StatusOK, gin.H{"logins": seed.DemoLogins(cfg)})
 	})
+
+	// API reference: Swagger UI at /api/docs, the document at /api/docs/openapi.yaml.
+	apidocs.Register(router)
 
 	routes.Register(ctx, router,
 		authService, leaveService, expenseService, leaveApprovalService, expenseApprovalService,

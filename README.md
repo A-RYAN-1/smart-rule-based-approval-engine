@@ -18,7 +18,7 @@
   &middot;
   <a href="#run-it-locally">Run locally</a>
   &middot;
-  <a href="backend/api/swagger.yaml">API reference</a>
+  <a href="https://smart-rule-based-approval-engine.vercel.app/api/docs">API reference</a>
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
   </a>
 </p>
 
-<p align="center"><sub>Last updated: 2026-11-09 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
+<p align="center"><sub>Last updated: 2026-11-13 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
 
 ---
 
@@ -102,6 +102,9 @@ whatever a visitor changes with the admin account is undone. You can also sign u
   <tr>
     <td colspan="2"><img src="docs/images/admin-rule-draft.png" alt="A drafted rule shown as a before and after, with Confirm and save and Discard buttons"><p align="center"><sub>Admin: a sentence becomes a draft (expense limit for grade 2, 10000 to 8000) that is saved only on Confirm</sub></p></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/api-docs.png" alt="Swagger UI at /api/docs listing the operations, auth and leave endpoints of the API"><p align="center"><sub>The API reference at /api/docs, served by the app and checked against its routes</sub></p></td>
+  </tr>
 </table>
 
 ## Features
@@ -122,6 +125,10 @@ whatever a visitor changes with the admin account is undone. You can also sign u
   grade 2"; a language model proposes one rule, which is checked against the grade limits and shown as
   a before and after. Nothing is saved until the admin confirms. Off unless `GEMINI_API_KEY` is set;
   see [docs/rule-drafting.md](docs/rule-drafting.md).
+- **API reference**: Swagger UI at `/api/docs` and the OpenAPI 3 document at `/api/docs/openapi.yaml`,
+  written from the handlers and the real responses (the response envelope, roles, statuses, error
+  codes). A test compares the document with the registered routes in both directions, so a new route
+  without an entry, or an entry without a route, fails CI.
 - **Admin**: create, edit and disable rules; manage holidays; status and request-type reports; a user
   overview.
 
@@ -245,7 +252,7 @@ a route and the document disagree. The Postman collection is [`backend/API.txt`]
 
 | Area | What is in place |
 |---|---|
-| Tests | Go unit tests for services (with mocks), config, JWT and rule helpers; an integration test of the main flow on a real, empty Postgres (migrations, seed, sign-up, auto-approval, manager approval, role checks, cron auth, demo logins, demo rule reset). In all 90 Go test cases (with subtests) and 112 frontend Vitest tests, all passing on 2026-10-22 |
+| Tests | Go unit tests for services (with mocks), config, JWT and rule helpers; an integration test of the main flow on a real, empty Postgres (migrations, seed, sign-up, auto-approval, manager approval, role checks, cron auth, demo logins, demo rule reset, the API reference page); the OpenAPI document is validated by a parser and compared with every registered route. In all 90 Go test cases (with subtests) and 112 frontend Vitest tests, all passing on 2026-10-22 |
 | CI | GitHub Actions on every push: `go vet`, `gofmt`, unit and integration tests with Postgres as a service container, `govulncheck`, frontend lint, tests and build ([ci.yml](.github/workflows/ci.yml)) |
 | Uptime | A daily GitHub Actions check of the live site and its database ([uptime.yml](.github/workflows/uptime.yml)) |
 | Security | Signing key from `JWT_SECRET` (32+ characters, validated); token in an httpOnly, Secure, SameSite=Lax cookie; roles checked on the server; admin and manager accounts only from the seed, never from sign-up; CORS limited to configured origins; HSTS and X-Frame-Options headers; the cron endpoint requires `CRON_SECRET` |
@@ -367,6 +374,10 @@ runs the nightly job in-process.
   so it can answer "limit reached" on a busy day.
 - Requests made before 2026-10-22 keep the calendar-day count they were applied with.
 - Lighthouse and accessibility checks cover the sign-in page only; the pages behind login have not been audited.
+- The API reference describes status codes and field names from the handlers and the demo's real
+  responses (2026-11-13), not generated examples. The three `/my` list routes always return the first
+  10 rows; use `/api/my-requests?type=` for paging. Swagger UI loads its script and styles from
+  jsDelivr (pinned version, integrity hashes), so `/api/docs` needs internet access.
 - The first request after a quiet period waits for a function cold start.
 
 **Planned**

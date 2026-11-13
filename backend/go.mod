@@ -2,7 +2,7 @@ module github.com/ankita-advitot/rule_based_approval_engine
 
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/getkin/kin-openapi v0.133.0

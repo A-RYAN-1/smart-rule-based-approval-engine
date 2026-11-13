@@ -1,19 +1,49 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: Rule Based Approval Engine API
-  description: A comprehensive REST API for managing leave, expense, and discount approvals with rule-based evaluation
-  version: 1.0.0
-  contact:
-    name: API Support
-    email: support@approvalengine.com
-  license:
-    name: MIT
+  title: Smart Rule-Based Approval Engine API
+  version: 1.1.0
+  description: |
+    REST API of the approval engine. Employees file leave, expense and discount requests; the server
+    evaluates each one against the admin-defined rules of the employee's grade and either decides it
+    (auto approved or auto rejected) or leaves it pending for a manager or admin.
+
+    **Responses.** Every handler answers with the same envelope:
+    `{"success": bool, "message": string, "data": any, "error": any}`. Two things are not in the
+    envelope: the authentication middleware answers a missing or bad token with `{"error": "..."}`,
+    and the health, cron and demo-login endpoints return their own small bodies.
+
+    **Authentication.** `POST /api/auth/login` returns a JWT in `data.token` and also sets it as the
+    `access_token` cookie (one hour). Send it as `Authorization: Bearer <token>` or let the browser
+    send the cookie. Roles are `EMPLOYEE`, `MANAGER` and `ADMIN`.
+
+    **Try it.** The demo deployment lists its three demo accounts at `GET /api/demo-logins`.
+
+    This file is checked against the registered routes in CI: a route missing here, or documented
+    here and not served, fails the build.
 
 servers:
+  - url: https://smart-rule-based-approval-engine.vercel.app
+    description: Demo deployment (Vercel)
   - url: http://localhost:8080
-    description: Development Server
-  - url: https://api.approvalengine.com
-    description: Production Server
+    description: Local development
+
+tags:
+  - name: Operations
+    description: Health, the scheduled job and demo accounts
+  - name: Auth
+  - name: Leave
+  - name: Expense
+  - name: Discount
+  - name: Requests
+    description: All request types in one call
+  - name: Balances
+  - name: Reports
+  - name: Admin
+    description: Rules, holidays and reports; admin only
+
+security:
+  - BearerAuth: []
+  - CookieAuth: []
 
 components:
   securitySchemes:
@@ -21,1256 +51,1291 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT token for authentication
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+    CronSecret:
+      type: http
+      scheme: bearer
+      description: The value of the CRON_SECRET environment variable
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    Limit:
+      name: limit
+      in: query
+      description: Page size. A value that is not a positive integer falls back to 10.
+      schema: { type: integer, default: 10 }
+    Offset:
+      name: offset
+      in: query
+      description: Rows to skip. A negative or invalid value falls back to 0.
+      schema: { type: integer, default: 0 }
+
+  responses:
+    Unauthorized:
+      description: No token, or an invalid or expired one. This body comes from the auth middleware, not the envelope.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string, example: unauthorized }
+    Forbidden:
+      description: The role may not do this
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    BadRequest:
+      description: Invalid input; `message` says which rule failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    NotFound:
+      description: No such request, rule or holiday
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
 
   schemas:
+    Envelope:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { nullable: true }
+        error: { nullable: true, description: "Extra detail on a failure, or null" }
+      required: [success, message, data, error]
+
+    Role:
+      type: string
+      enum: [EMPLOYEE, MANAGER, ADMIN]
+
+    RequestStatus:
+      type: string
+      enum: [PENDING, APPROVED, REJECTED, CANCELLED, AUTO_APPROVED, AUTO_REJECTED]
+
+    RequestType:
+      type: string
+      enum: [LEAVE, EXPENSE, DISCOUNT]
+
     User:
       type: object
       properties:
-        id:
-          type: integer
-          format: int64
-          example: 1
-        name:
-          type: string
-          example: "John Doe"
-        email:
-          type: string
-          format: email
-          example: "john@company.com"
-        grade_id:
-          type: integer
-          format: int64
-          example: 2
-        role:
-          type: string
-          enum: [employee, manager, admin]
-          example: "employee"
-        manager_id:
-          type: integer
-          format: int64
-          nullable: true
-          example: 5
-        created_at:
-          type: string
-          format: date-time
+        id: { type: integer, format: int64, example: 3 }
+        name: { type: string, example: Employee }
+        email: { type: string, format: email, example: employee@company.com }
+        grade_id: { type: integer, format: int64, example: 1 }
+        role: { $ref: '#/components/schemas/Role' }
+        manager_id: { type: integer, format: int64, nullable: true, example: 2 }
+        created_at: { type: string, format: date-time }
 
     RegisterRequest:
       type: object
-      required:
-        - name
-        - email
-        - password
+      required: [name, email, password]
       properties:
-        name:
-          type: string
-          minLength: 2
-          maxLength: 100
-          example: "Jane Smith"
-        email:
-          type: string
-          format: email
-          example: "jane@company.com"
-        password:
-          type: string
-          minLength: 6
-          example: "SecurePassword123"
+        name: { type: string, example: Jane Smith }
+        email: { type: string, format: email, example: jane@company.com }
+        password: { type: string, example: a-long-password }
 
     LoginRequest:
       type: object
-      required:
-        - email
-        - password
+      required: [email, password]
       properties:
-        email:
-          type: string
-          format: email
-          example: "john@company.com"
-        password:
-          type: string
-          example: "SecurePassword123"
+        email: { type: string, format: email, example: employee@company.com }
+        password: { type: string, example: employee-demo }
 
-    AuthResponse:
+    LoginData:
       type: object
       properties:
-        message:
-          type: string
-          example: "Login successful"
-        token:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        user:
-          $ref: '#/components/schemas/User'
+        token: { type: string, description: "JWT, valid for one hour" }
+        user: { $ref: '#/components/schemas/User' }
 
-    Balance:
+    LeaveApplyRequest:
+      type: object
+      required: [from_date, to_date, leave_type, reason]
+      properties:
+        from_date: { type: string, format: date, example: '2026-12-07' }
+        to_date: { type: string, format: date, example: '2026-12-09' }
+        leave_type: { type: string, example: CASUAL }
+        reason: { type: string, example: Family event }
+
+    ExpenseApplyRequest:
+      type: object
+      required: [amount, category, reason]
+      properties:
+        amount: { type: number, example: 4200, description: "Must be greater than zero" }
+        category: { type: string, example: TRAVEL, description: "Must not be blank" }
+        reason: { type: string, example: Client visit }
+
+    DiscountApplyRequest:
+      type: object
+      required: [discount_percentage, reason]
+      properties:
+        discount_percentage: { type: number, example: 8 }
+        reason: { type: string, example: Loyalty offer }
+
+    ApplyResult:
+      type: object
+      description: The decision made on the new request
+      properties:
+        status: { $ref: '#/components/schemas/RequestStatus' }
+
+    ApproveRequest:
       type: object
       properties:
-        id:
-          type: integer
-          format: int64
-        user_id:
-          type: integer
-          format: int64
-        balance_type:
-          type: string
-          enum: [leave, expense, discount]
-        total_allocated:
-          type: number
-          format: float
-        remaining_amount:
-          type: number
-          format: float
+        comment: { type: string, description: "Optional on approve", example: Approved }
 
-    LeaveRequest:
+    RejectRequest:
       type: object
-      required:
-        - from_date
-        - to_date
-        - leave_type
-        - reason
+      required: [comment]
       properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-        employee_id:
-          type: integer
-          format: int64
-          readOnly: true
-        from_date:
-          type: string
-          format: date
-          example: "2026-02-01"
-        to_date:
-          type: string
-          format: date
-          example: "2026-02-05"
-        days:
-          type: integer
-          readOnly: true
-          description: Working days the request uses (Monday to Friday, minus company holidays), fixed when it is applied
-          example: 4
-        leave_type:
-          type: string
-          enum: [annual, sick, personal, maternity]
-          example: "annual"
-        reason:
-          type: string
-          example: "Vacation time"
-        status:
-          type: string
-          enum: [pending, approved, rejected, cancelled]
-          readOnly: true
-        approved_by_id:
-          type: integer
-          format: int64
-          nullable: true
-          readOnly: true
-        rule_id:
-          type: integer
-          format: int64
-          nullable: true
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
+        comment: { type: string, description: "Required on reject", example: Over the team limit }
 
-    ExpenseRequest:
+    LeaveRequestItem:
       type: object
-      required:
-        - amount
-        - category
-        - reason
       properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-        employee_id:
-          type: integer
-          format: int64
-          readOnly: true
-        amount:
-          type: number
-          format: float
-          example: 150.50
-        category:
-          type: string
-          enum: [travel, meals, equipment, other]
-          example: "travel"
-        reason:
-          type: string
-          example: "Flight to client meeting"
-        status:
-          type: string
-          enum: [pending, approved, rejected, cancelled]
-          readOnly: true
-        rule_id:
-          type: integer
-          format: int64
-          nullable: true
-          readOnly: true
-        approved_by_id:
-          type: integer
-          format: int64
-          nullable: true
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
+        id: { type: integer, format: int64 }
+        leave_type: { type: string, example: CASUAL }
+        from_date: { type: string, format: date }
+        to_date: { type: string, format: date }
+        days: { type: integer, description: "Working days (Monday to Friday minus company holidays), fixed when the request is filed" }
+        reason: { type: string }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        approval_comment: { type: string }
+        created_at: { type: string, format: date-time }
+        employee: { type: string, description: "Name of the requester; pending lists only" }
+        user_id: { type: integer, format: int64, description: "Requester; pending lists only" }
 
-    DiscountRequest:
+    ExpenseRequestItem:
       type: object
-      required:
-        - discount_percentage
-        - reason
       properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-        employee_id:
-          type: integer
-          format: int64
-          readOnly: true
-        discount_percentage:
-          type: number
-          format: float
-          example: 10.5
-        reason:
-          type: string
-          example: "Employee discount for purchase"
-        status:
-          type: string
-          enum: [pending, approved, rejected, cancelled]
-          readOnly: true
-        rule_id:
-          type: integer
-          format: int64
-          nullable: true
-          readOnly: true
-        approved_by_id:
-          type: integer
-          format: int64
-          nullable: true
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
+        id: { type: integer, format: int64 }
+        amount: { type: number }
+        category: { type: string, example: TRAVEL }
+        reason: { type: string }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        approval_comment: { type: string }
+        created_at: { type: string, format: date-time }
+        employee: { type: string, description: "Pending lists only" }
+        user_id: { type: integer, format: int64, description: "Pending lists only" }
 
-    ApprovalAction:
+    DiscountRequestItem:
       type: object
-      required:
-        - remarks
       properties:
-        remarks:
-          type: string
-          example: "Approved as per policy"
+        id: { type: integer, format: int64 }
+        discount_percentage: { type: number }
+        reason: { type: string }
+        status: { $ref: '#/components/schemas/RequestStatus' }
+        approval_comment: { type: string }
+        created_at: { type: string, format: date-time }
+        employee: { type: string, description: "Pending lists only" }
+        user_id: { type: integer, format: int64, description: "Pending lists only" }
 
-    Holiday:
+    LeaveRequestPage:
       type: object
-      required:
-        - name
-        - holiday_date
       properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-        name:
-          type: string
-          example: "Christmas"
-        holiday_date:
-          type: string
-          format: date
-          example: "2026-12-25"
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
+        requests:
+          type: array
+          items: { $ref: '#/components/schemas/LeaveRequestItem' }
+        total: { type: integer }
+
+    ExpenseRequestPage:
+      type: object
+      properties:
+        requests:
+          type: array
+          items: { $ref: '#/components/schemas/ExpenseRequestItem' }
+        total: { type: integer }
+
+    DiscountRequestPage:
+      type: object
+      properties:
+        requests:
+          type: array
+          items: { $ref: '#/components/schemas/DiscountRequestItem' }
+        total: { type: integer }
+
+    AllRequests:
+      type: object
+      description: The three request types side by side
+      properties:
+        leave_request:
+          type: array
+          items: { $ref: '#/components/schemas/LeaveRequestItem' }
+        expense_request:
+          type: array
+          items: { $ref: '#/components/schemas/ExpenseRequestItem' }
+        discount_request:
+          type: array
+          items: { $ref: '#/components/schemas/DiscountRequestItem' }
+        total: { type: integer, description: "Present on the pending list" }
+
+    Balances:
+      type: object
+      properties:
+        leave:
+          type: object
+          properties:
+            total: { type: integer, example: 45 }
+            remaining: { type: integer, example: 33 }
+        expense:
+          type: object
+          properties:
+            total: { type: number, example: 50000 }
+            remaining: { type: number, example: 42000 }
+        discount:
+          type: object
+          properties:
+            total: { type: number, example: 40 }
+            remaining: { type: number, example: 40 }
 
     Rule:
       type: object
-      required:
-        - request_type
-        - condition
-        - action
-        - grade_id
+      required: [request_type, condition, action, grade_id]
       properties:
-        id:
-          type: integer
-          format: int64
-          readOnly: true
-        request_type:
-          type: string
-          enum: [leave, expense, discount]
-          example: "leave"
+        id: { type: integer, format: int64, readOnly: true }
+        request_type: { $ref: '#/components/schemas/RequestType' }
         condition:
           type: object
-          additionalProperties: true
-          example:
-            amount: 5000
-            operator: ">"
-        action:
-          type: string
-          enum: [auto_approve, auto_reject, requires_review]
-          example: "auto_approve"
-        grade_id:
-          type: integer
-          format: int64
-          example: 2
-        active:
-          type: boolean
-          default: true
+          description: One limit, which must not exceed the grade's own limit. `max_days` for leave, `max_amount` for expense, `max_percent` for discount.
+          additionalProperties: { type: number }
+          example: { max_amount: 5000 }
+        action: { type: string, enum: [AUTO_APPROVE], example: AUTO_APPROVE }
+        grade_id: { type: integer, format: int64, example: 1 }
+        active: { type: boolean }
+
+    RuleDraftRequest:
+      type: object
+      required: [sentence]
+      properties:
+        sentence: { type: string, maxLength: 300, example: grade 2 expenses up to 8k }
+
+    RuleDraft:
+      type: object
+      description: A proposal. Nothing is saved until the admin posts the rule to `POST /api/admin/rules`.
+      properties:
+        rule: { $ref: '#/components/schemas/Rule' }
+        grade_name: { type: string }
+        change:
+          type: object
+          properties:
+            field: { type: string, example: max_amount }
+            before: { type: number, nullable: true, description: "Current value, or null when no rule exists yet" }
+            after: { type: number }
+        prompt_version: { type: string, example: rule-draft-v2 }
+
+    HolidayRequest:
+      type: object
+      required: [date]
+      properties:
+        date: { type: string, format: date, example: '2026-12-25' }
+        description: { type: string, example: Christmas }
+
+    Holiday:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        date: { type: string, format: date }
+        description: { type: string }
 
     StatusDistribution:
       type: object
       properties:
-        pending:
-          type: integer
-          example: 15
-        approved:
-          type: integer
-          example: 42
-        rejected:
-          type: integer
-          example: 8
+        pending: { type: integer }
+        approved: { type: integer }
+        rejected: { type: integer }
+        cancelled: { type: integer }
+        auto_rejected: { type: integer }
 
-    RequestsByType:
+    RequestTypeReport:
       type: object
       properties:
-        leave:
-          type: integer
-          example: 30
-        expense:
-          type: integer
-          example: 20
-        discount:
-          type: integer
-          example: 15
+        type: { $ref: '#/components/schemas/RequestType' }
+        total_requests: { type: integer }
+        auto_approved: { type: integer }
+        auto_approved_percentage: { type: number }
 
-    ErrorResponse:
+    DashboardSummary:
       type: object
       properties:
-        error:
-          type: string
-          example: "Invalid request"
-        message:
-          type: string
-          example: "Please provide valid input"
-        code:
-          type: integer
-          example: 400
-
-    SuccessResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "Operation successful"
-        data:
+        total_pending: { type: integer }
+        pending: { type: integer }
+        approved: { type: integer }
+        rejected: { type: integer }
+        auto_rejected: { type: integer }
+        cancelled: { type: integer }
+        distribution:
           type: object
+          properties:
+            pending:
+              type: object
+              properties:
+                leave: { type: integer }
+                expense: { type: integer }
+                discount: { type: integer }
+            approved: { type: integer }
+            rejected: { type: integer }
+            auto_rejected: { type: integer }
+            cancelled: { type: integer }
+        type_report:
+          type: array
+          items: { $ref: '#/components/schemas/RequestTypeReport' }
 
 paths:
   /health:
     get:
-      tags:
-        - Health
-      summary: Health check endpoint
-      description: Returns the status of the API
-      operationId: getHealth
+      tags: [Operations]
+      summary: Liveness and database check
+      description: Pings the database with a 3 second limit. Also served at `/api/health`.
+      security: []
       responses:
         '200':
-          description: API is healthy
+          description: Healthy
+          content:
+            application/json:
+              schema: &healthBody
+                type: object
+                properties:
+                  status: { type: string, enum: [healthy, degraded] }
+                  database: { type: string, enum: [ok, unreachable] }
+                  timestamp: { type: string, format: date-time }
+                  service: { type: string, example: approval-engine }
+        '503':
+          description: The database is unreachable
+          content:
+            application/json:
+              schema: *healthBody
+
+  /api/health:
+    get:
+      tags: [Operations]
+      summary: Same as /health
+      security: []
+      responses:
+        '200':
+          description: Healthy
+          content:
+            application/json:
+              schema: *healthBody
+        '503':
+          description: The database is unreachable
+          content:
+            application/json:
+              schema: *healthBody
+
+  /api/cron/auto-reject:
+    get:
+      tags: [Operations]
+      summary: Run the auto-reject job
+      description: |
+        Rejects pending requests that have waited too long. Called once a day by Vercel Cron, which
+        sends `Authorization: Bearer <CRON_SECRET>`. Disabled (always 401) when `CRON_SECRET` is not set.
+      security:
+        - CronSecret: []
+      responses:
+        '200':
+          description: The job ran
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-                    example: "UP"
+                  status: { type: string, example: done }
+        '401':
+          description: Wrong or missing secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: unauthorized }
 
-  /auth/register:
+  /api/demo-logins:
+    get:
+      tags: [Operations]
+      summary: Demo accounts for the login page
+      description: Returns 404 unless the server runs with `DEMO_MODE` on.
+      security: []
+      responses:
+        '200':
+          description: The demo accounts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logins:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role: { $ref: '#/components/schemas/Role' }
+                        email: { type: string, format: email }
+                        password: { type: string }
+        '404':
+          description: Demo mode is off
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { type: string, example: not found }
+
+  /api/auth/register:
     post:
-      tags:
-        - Authentication
-      summary: Register a new user
-      description: Create a new user account
-      operationId: registerUser
+      tags: [Auth]
+      summary: Create an employee account
+      security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
       responses:
         '201':
-          description: User registered successfully
+          description: Account created. No token is issued; log in next.
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '409':
-          description: Email already exists
+          description: The email is already registered
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
 
-  /auth/login:
+  /api/auth/login:
     post:
-      tags:
-        - Authentication
-      summary: User login
-      description: Authenticate user and return JWT token
-      operationId: loginUser
+      tags: [Auth]
+      summary: Log in
+      description: Returns the JWT in the body and sets it as the `access_token` cookie.
+      security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
+            schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
         '200':
-          description: Login successful
+          description: Logged in
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
-                example: "token=eyJhbGci...; HttpOnly; Secure; SameSite=Strict"
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/LoginData' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401':
-          description: Invalid credentials
+          description: Wrong email or password
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
 
-  /auth/logout:
+  /api/auth/logout:
     post:
-      tags:
-        - Authentication
-      summary: User logout
-      description: Clear the JWT token
-      operationId: logoutUser
+      tags: [Auth]
+      summary: Log out
+      description: Clears the `access_token` cookie. The JWT itself stays valid until it expires.
+      security: []
       responses:
         '200':
-          description: Logout successful
+          description: Cookie cleared
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
 
   /api/me:
     get:
-      tags:
-        - User
-      summary: Get current user info
-      description: Returns the authenticated user's information
-      operationId: getCurrentUser
-      security:
-        - BearerAuth: []
+      tags: [Auth]
+      summary: The signed-in user
       responses:
         '200':
-          description: User information retrieved
+          description: The user
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  user_id:
-                    type: integer
-                    format: int64
-                  role:
-                    type: string
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/balances:
     get:
-      tags:
-        - Balances
-      summary: Get user's balances
-      description: Retrieve leave, expense, and discount balances for the authenticated user
-      operationId: getMyBalances
-      security:
-        - BearerAuth: []
+      tags: [Balances]
+      summary: Remaining leave, expense and discount allowance
       responses:
         '200':
-          description: Balances retrieved successfully
+          description: Balances
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Balance'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/Balances' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/leaves/request:
     post:
-      tags:
-        - Leaves
-      summary: Apply for leave
-      description: Submit a new leave request
-      operationId: applyLeave
-      security:
-        - BearerAuth: []
+      tags: [Leave]
+      summary: File a leave request
+      description: The rules decide it on the spot (`AUTO_APPROVED`, `AUTO_REJECTED`) or leave it `PENDING`.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/LeaveRequest'
-      responses:
-        '201':
-          description: Leave request created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LeaveRequest'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/leaves/{id}/cancel:
-    post:
-      tags:
-        - Leaves
-      summary: Cancel a leave request
-      description: Cancel a previously submitted leave request
-      operationId: cancelLeave
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+            schema: { $ref: '#/components/schemas/LeaveApplyRequest' }
       responses:
         '200':
-          description: Leave request cancelled
+          description: Filed; `data.status` is the decision
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
-        '404':
-          description: Leave request not found
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ApplyResult' }
+        '400':
+          description: Bad dates or format, a past date, overlap with an existing request, or more days than the balance holds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/leave/apply:
+    post:
+      tags: [Leave]
+      summary: Alias of POST /api/leaves/request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LeaveApplyRequest' }
+      responses:
+        '200':
+          description: Same as `/api/leaves/request`
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ApplyResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/leaves/working-days:
     get:
-      tags:
-        - Leaves
-      summary: Count the days a leave would use
-      description: Working days from the first date to the last, both included, skipping weekends and company holidays. This is the number deducted from the balance.
-      operationId: countLeaveDays
-      security:
-        - BearerAuth: []
+      tags: [Leave]
+      summary: Working days between two dates
+      description: Monday to Friday minus the company holidays; the form uses it to show the cost before filing.
       parameters:
-        - name: from
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
-        - name: to
-          in: query
-          required: true
-          schema:
-            type: string
-            format: date
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
       responses:
         '200':
-          description: The day count, as data.days
-        '400':
-          description: A date is malformed or from is after to
+          description: The count
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          days: { type: integer, example: 5 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/leaves/my:
     get:
-      tags:
-        - Leaves
-      summary: Get my leave requests
-      description: Retrieve all leave requests for the authenticated user
-      operationId: getMyLeaves
-      security:
-        - BearerAuth: []
+      tags: [Leave]
+      summary: My leave requests
+      description: Always the first 10 rows; `limit` and `offset` are not read on this route (use `/api/my-requests?type=LEAVE`).
       responses:
         '200':
-          description: Leave requests retrieved
+          description: My requests, newest first
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/LeaveRequest'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/LeaveRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/leaves/pending:
     get:
-      tags:
-        - Leaves
-      summary: Get pending leave requests
-      description: Retrieve all pending leave requests (Manager/Admin only)
-      operationId: getPendingLeaves
-      security:
-        - BearerAuth: []
+      tags: [Leave]
+      summary: Leave requests waiting for me
+      description: Managers see their reports' requests; admins see managers' requests and anything unassigned. Employees get 403.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Pending leave requests retrieved
+          description: A page of pending requests
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/LeaveRequest'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/LeaveRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/leaves/{id}/cancel:
+    post:
+      tags: [Leave]
+      summary: Cancel my own request
+      description: Returns the days to the balance. A finished request cannot be cancelled.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/leaves/{id}/approve:
     post:
-      tags:
-        - Leaves
-      summary: Approve a leave request
-      description: Approve a pending leave request (Manager/Admin only)
-      operationId: approveLeave
-      security:
-        - BearerAuth: []
+      tags: [Leave]
+      summary: Approve a pending leave request
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalAction'
+            schema: { $ref: '#/components/schemas/ApproveRequest' }
       responses:
         '200':
-          description: Leave request approved
+          description: Approved
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/leaves/{id}/reject:
     post:
-      tags:
-        - Leaves
-      summary: Reject a leave request
-      description: Reject a pending leave request (Manager/Admin only)
-      operationId: rejectLeave
-      security:
-        - BearerAuth: []
+      tags: [Leave]
+      summary: Reject a pending leave request
+      description: A comment is required. The days return to the balance.
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalAction'
+            schema: { $ref: '#/components/schemas/RejectRequest' }
       responses:
         '200':
-          description: Leave request rejected
+          description: Rejected
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/expenses/request:
     post:
-      tags:
-        - Expenses
-      summary: Apply for expense
-      description: Submit a new expense request
-      operationId: applyExpense
-      security:
-        - BearerAuth: []
+      tags: [Expense]
+      summary: File an expense request
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ExpenseRequest'
-      responses:
-        '201':
-          description: Expense request created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExpenseRequest'
-
-  /api/expenses/{id}/cancel:
-    post:
-      tags:
-        - Expenses
-      summary: Cancel an expense request
-      description: Cancel a previously submitted expense request
-      operationId: cancelExpense
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+            schema: { $ref: '#/components/schemas/ExpenseApplyRequest' }
       responses:
         '200':
-          description: Expense request cancelled
+          description: Filed; `data.status` is the decision
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ApplyResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/expenses/my:
     get:
-      tags:
-        - Expenses
-      summary: Get my expense requests
-      description: Retrieve all expense requests for the authenticated user
-      operationId: getMyExpenses
-      security:
-        - BearerAuth: []
+      tags: [Expense]
+      summary: My expense requests
+      description: Always the first 10 rows; `limit` and `offset` are not read on this route.
       responses:
         '200':
-          description: Expense requests retrieved
+          description: My requests, newest first
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ExpenseRequest'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ExpenseRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/expenses/pending:
     get:
-      tags:
-        - Expenses
-      summary: Get pending expense requests
-      description: Retrieve all pending expense requests (Manager/Admin only)
-      operationId: getPendingExpenses
-      security:
-        - BearerAuth: []
+      tags: [Expense]
+      summary: Expense requests waiting for me
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Pending expense requests retrieved
+          description: A page of pending requests
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ExpenseRequest'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ExpenseRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/expenses/{id}/cancel:
+    post:
+      tags: [Expense]
+      summary: Cancel my own request
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/expenses/{id}/approve:
     post:
-      tags:
-        - Expenses
-      summary: Approve an expense request
-      description: Approve a pending expense request (Manager/Admin only)
-      operationId: approveExpense
-      security:
-        - BearerAuth: []
+      tags: [Expense]
+      summary: Approve a pending expense request
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalAction'
+            schema: { $ref: '#/components/schemas/ApproveRequest' }
       responses:
         '200':
-          description: Expense request approved
+          description: Approved
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/expenses/{id}/reject:
     post:
-      tags:
-        - Expenses
-      summary: Reject an expense request
-      description: Reject a pending expense request (Manager/Admin only)
-      operationId: rejectExpense
-      security:
-        - BearerAuth: []
+      tags: [Expense]
+      summary: Reject a pending expense request
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalAction'
+            schema: { $ref: '#/components/schemas/RejectRequest' }
       responses:
         '200':
-          description: Expense request rejected
+          description: Rejected
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/discounts/request:
     post:
-      tags:
-        - Discounts
-      summary: Apply for discount
-      description: Submit a new discount request
-      operationId: applyDiscount
-      security:
-        - BearerAuth: []
+      tags: [Discount]
+      summary: File a discount request
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/DiscountRequest'
-      responses:
-        '201':
-          description: Discount request created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DiscountRequest'
-
-  /api/discounts/{id}/cancel:
-    post:
-      tags:
-        - Discounts
-      summary: Cancel a discount request
-      description: Cancel a previously submitted discount request
-      operationId: cancelDiscount
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+            schema: { $ref: '#/components/schemas/DiscountApplyRequest' }
       responses:
         '200':
-          description: Discount request cancelled
+          description: Filed; `data.status` is the decision
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ApplyResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/discounts/my:
     get:
-      tags:
-        - Discounts
-      summary: Get my discount requests
-      description: Retrieve all discount requests for the authenticated user
-      operationId: getMyDiscounts
-      security:
-        - BearerAuth: []
+      tags: [Discount]
+      summary: My discount requests
+      description: Always the first 10 rows; `limit` and `offset` are not read on this route.
       responses:
         '200':
-          description: Discount requests retrieved
+          description: My requests, newest first
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DiscountRequest'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/DiscountRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/discounts/pending:
     get:
-      tags:
-        - Discounts
-      summary: Get pending discount requests
-      description: Retrieve all pending discount requests (Manager/Admin only)
-      operationId: getPendingDiscounts
-      security:
-        - BearerAuth: []
+      tags: [Discount]
+      summary: Discount requests waiting for me
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Pending discount requests retrieved
+          description: A page of pending requests
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DiscountRequest'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/DiscountRequestPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/discounts/{id}/cancel:
+    post:
+      tags: [Discount]
+      summary: Cancel my own request
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/discounts/{id}/approve:
     post:
-      tags:
-        - Discounts
-      summary: Approve a discount request
-      description: Approve a pending discount request (Manager/Admin only)
-      operationId: approveDiscount
-      security:
-        - BearerAuth: []
+      tags: [Discount]
+      summary: Approve a pending discount request
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
       requestBody:
-        required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalAction'
+            schema: { $ref: '#/components/schemas/ApproveRequest' }
       responses:
         '200':
-          description: Discount request approved
+          description: Approved
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/discounts/{id}/reject:
     post:
-      tags:
-        - Discounts
-      summary: Reject a discount request
-      description: Reject a pending discount request (Manager/Admin only)
-      operationId: rejectDiscount
-      security:
-        - BearerAuth: []
+      tags: [Discount]
+      summary: Reject a pending discount request
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalAction'
+            schema: { $ref: '#/components/schemas/RejectRequest' }
       responses:
         '200':
-          description: Discount request rejected
+          description: Rejected
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
-  /api/system/run-auto-reject:
-    post:
-      tags:
-        - System
-      summary: Run auto-reject job
-      description: Manually trigger the auto-reject cron job
-      operationId: runAutoReject
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Auto-reject job executed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
-
-  /api/admin/holidays:
-    post:
-      tags:
-        - Admin
-      summary: Add a holiday
-      description: Add a new holiday (Admin only)
-      operationId: addHoliday
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Holiday'
-      responses:
-        '201':
-          description: Holiday created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Holiday'
-
+  /api/my-requests:
     get:
-      tags:
-        - Admin
-      summary: Get all holidays
-      description: Retrieve all holidays (Admin only)
-      operationId: getHolidays
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Holidays retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Holiday'
-
-  /api/admin/holidays/{id}:
-    delete:
-      tags:
-        - Admin
-      summary: Delete a holiday
-      description: Delete a holiday by ID (Admin only)
-      operationId: deleteHoliday
-      security:
-        - BearerAuth: []
+      tags: [Requests]
+      summary: My requests of one type
       parameters:
-        - name: id
-          in: path
+        - name: type
+          in: query
           required: true
-          schema:
-            type: integer
-            format: int64
+          schema: { $ref: '#/components/schemas/RequestType' }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Holiday deleted successfully
+          description: A page of my requests; the item shape depends on `type`
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          requests:
+                            type: array
+                            items:
+                              oneOf:
+                                - $ref: '#/components/schemas/LeaveRequestItem'
+                                - $ref: '#/components/schemas/ExpenseRequestItem'
+                                - $ref: '#/components/schemas/DiscountRequestItem'
+                          total: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/my-requests/all:
+    get:
+      tags: [Requests]
+      summary: My requests of all three types
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Three lists
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/AllRequests' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/pending/all:
+    get:
+      tags: [Requests]
+      summary: Everything waiting for me, all three types
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Three lists and a total
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/AllRequests' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/reports/dashboard:
+    get:
+      tags: [Reports]
+      summary: Dashboard counts
+      description: Counts for the signed-in role, with the per-type auto-approval report.
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/DashboardSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /api/admin/rules:
+    get:
+      tags: [Admin]
+      summary: List the approval rules
+      responses:
+        '200':
+          description: All rules
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Rule' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
-      tags:
-        - Admin
+      tags: [Admin]
       summary: Create a rule
-      description: Create a new approval rule (Admin only)
-      operationId: createRule
-      security:
-        - BearerAuth: []
+      description: The limit in `condition` may not exceed the grade's own limit.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Rule'
+            schema: { $ref: '#/components/schemas/Rule' }
       responses:
         '201':
-          description: Rule created successfully
+          description: Created
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/Rule'
-
-    get:
-      tags:
-        - Admin
-      summary: Get all rules
-      description: Retrieve all approval rules (Admin only)
-      operationId: getRules
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Rules retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Rule'
-
-  /api/admin/rules/draft:
-    post:
-      tags:
-        - Admin
-      summary: Draft a rule from a sentence
-      description: >
-        Admin only. Returns a proposed rule and the before and after of its limit.
-        Nothing is saved; save the confirmed rule with POST /api/admin/rules.
-        Returns 503 when GEMINI_API_KEY is not set, 422 when the sentence does not
-        give exactly one rule or the value exceeds the grade limit, 429 at the
-        daily limit.
-      operationId: draftRule
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [sentence]
-              properties:
-                sentence:
-                  type: string
-                  maxLength: 300
-      responses:
-        '200':
-          description: A draft rule
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  rule:
-                    $ref: '#/components/schemas/Rule'
-                  grade_name:
-                    type: string
-                  change:
-                    type: object
-                    properties:
-                      field: {type: string}
-                      before: {type: number, nullable: true}
-                      after: {type: number}
-                  prompt_version:
-                    type: string
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /api/admin/rules/draft/status:
     get:
-      tags:
-        - Admin
-      summary: Whether rule drafting is configured
-      operationId: ruleDraftStatus
+      tags: [Admin]
+      summary: Is rule drafting switched on
+      description: Drafting is on only when the server has a model key.
       responses:
         '200':
-          description: "{enabled: boolean}"
+          description: The switch
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          enabled: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
-  /api/admin/rules/{id}:
-    put:
-      tags:
-        - Admin
-      summary: Update a rule
-      description: Update an existing approval rule (Admin only)
-      operationId: updateRule
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+  /api/admin/rules/draft:
+    post:
+      tags: [Admin]
+      summary: Draft a rule from a sentence
+      description: |
+        Returns one proposed rule as a before and after. Nothing is saved; the admin confirms by
+        posting the rule to `POST /api/admin/rules`. See `docs/rule-drafting.md`.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Rule'
+            schema: { $ref: '#/components/schemas/RuleDraftRequest' }
       responses:
         '200':
-          description: Rule updated successfully
+          description: A draft
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Rule'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/RuleDraft' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: The sentence is unclear, or the value is above the grade limit or not positive
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '429':
+          description: The daily drafting limit or the provider quota is used up
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '502':
+          description: The model provider failed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '503':
+          description: Drafting is switched off
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
 
-    delete:
-      tags:
-        - Admin
-      summary: Delete a rule
-      description: Delete an approval rule (Admin only)
-      operationId: deleteRule
-      security:
-        - BearerAuth: []
+  /api/admin/rules/{id}:
+    put:
+      tags: [Admin]
+      summary: Update a rule
       parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Rule' }
       responses:
         '200':
-          description: Rule deleted successfully
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Admin]
+      summary: Delete a rule
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/admin/holidays:
+    get:
+      tags: [Admin]
+      summary: List company holidays
+      description: '`data` is null when there are none.'
+      responses:
+        '200':
+          description: Holidays
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessResponse'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        nullable: true
+                        items: { $ref: '#/components/schemas/Holiday' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      summary: Add a company holiday
+      description: Holidays are not counted as leave days.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HolidayRequest' }
+      responses:
+        '201':
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/holidays/{id}:
+    delete:
+      tags: [Admin]
+      summary: Remove a company holiday
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Removed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /api/admin/reports/request-status-distribution:
     get:
-      tags:
-        - Admin
-      summary: Get request status distribution
-      description: Retrieve distribution of requests by status (Admin only)
-      operationId: getRequestStatusDistribution
-      security:
-        - BearerAuth: []
+      tags: [Admin]
+      summary: Requests by status
       responses:
         '200':
-          description: Status distribution retrieved
+          description: Counts
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StatusDistribution'
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/StatusDistribution' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 
   /api/admin/reports/requests-by-type:
     get:
-      tags:
-        - Admin
-      summary: Get requests by type
-      description: Retrieve count of requests grouped by type (Admin only)
-      operationId: getRequestsByType
-      security:
-        - BearerAuth: []
+      tags: [Admin]
+      summary: Requests and auto-approval rate by type
       responses:
         '200':
-          description: Requests by type retrieved
+          description: One row per type
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RequestsByType'
-
-tags:
-  - name: Health
-    description: API health and status endpoints
-  - name: Authentication
-    description: User registration and login
-  - name: User
-    description: User profile operations
-  - name: Balances
-    description: User balance management
-  - name: Leaves
-    description: Leave request management
-  - name: Expenses
-    description: Expense request management
-  - name: Discounts
-    description: Discount request management
-  - name: System
-    description: System-level operations
-  - name: Admin
-    description: Admin-only operations for managing rules, holidays, and reports
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/RequestTypeReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }

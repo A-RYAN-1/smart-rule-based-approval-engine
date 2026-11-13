@@ -235,8 +235,9 @@ frontend/src/
   hooks/, contexts/          TanStack Query hooks, auth context
 ```
 
-API reference: [`backend/api/swagger.yaml`](backend/api/swagger.yaml) and the Postman collection
-[`backend/API.txt`](backend/API.txt).
+API reference: Swagger UI at [`/api/docs`](https://smart-rule-based-approval-engine.vercel.app/api/docs)
+on the demo, served from [`backend/api/swagger.yaml`](backend/api/swagger.yaml). A test fails the build when
+a route and the document disagree. The Postman collection is [`backend/API.txt`](backend/API.txt).
 
 </details>
 

@@ -36,7 +36,7 @@
   </a>
 </p>
 
-<p align="center"><sub>Last updated: 2026-11-13 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
+<p align="center"><sub>Last updated: 2026-11-15 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
 
 ---
 
@@ -125,6 +125,10 @@ whatever a visitor changes with the admin account is undone. You can also sign u
   grade 2"; a language model proposes one rule, which is checked against the grade limits and shown as
   a before and after. Nothing is saved until the admin confirms. Off unless `GEMINI_API_KEY` is set;
   see [docs/rule-drafting.md](docs/rule-drafting.md).
+- **Rule dry run**: before saving a draft, an admin tests it. `POST /api/admin/rules/dry-run` decides values the
+  admin types and the newest 200 real requests of that type and grade under the rule saved today and under
+  the draft, with the same decision function the request flow uses, and returns how many more or fewer
+  would be approved by the system. It never writes; see [docs/rule-dry-run.md](docs/rule-dry-run.md).
 - **API reference**: Swagger UI at `/api/docs` and the OpenAPI 3 document at `/api/docs/openapi.yaml`,
   written from the handlers and the real responses (the response envelope, roles, statuses, error
   codes). A test compares the document with the registered routes in both directions, so a new route
@@ -372,6 +376,9 @@ runs the nightly job in-process.
 - Rule drafting scored 49 of 50 on a 50-sentence set written by one author (2026-11-09, prompt v2); that
   shows the approach works, not a production accuracy figure. It uses a free model tier with a daily cap,
   so it can answer "limit reached" on a busy day.
+- The dry run replays the newest 200 requests of a grade as they were asked, so it shows what the rule
+  would have decided then; it does not model balances, overlap or approver rules, and a grade with no
+  history shows only the typed values.
 - Requests made before 2026-10-22 keep the calendar-day count they were applied with.
 - Lighthouse and accessibility checks cover the sign-in page only; the pages behind login have not been audited.
 - The API reference describes status codes and field names from the handlers and the demo's real

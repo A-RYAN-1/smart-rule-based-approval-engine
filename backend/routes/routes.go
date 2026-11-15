@@ -11,6 +11,7 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/app/my_requests"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/reports"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/rule_drafting"
+	"github.com/ankita-advitot/rule_based_approval_engine/app/rule_dryrun"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/rules"
 	"github.com/ankita-advitot/rule_based_approval_engine/interfaces"
 	"github.com/ankita-advitot/rule_based_approval_engine/pkg/middleware"
@@ -34,6 +35,7 @@ func Register(
 	discountService interfaces.DiscountService,
 	discountApprovalService interfaces.DiscountApprovalService,
 	ruleDraftHandler *rule_drafting.Handler,
+	ruleDryRunHandler *rule_dryrun.Handler,
 ) {
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(ctx, authService)
@@ -116,6 +118,7 @@ func Register(
 		{
 			admin.GET("/rules/draft/status", ruleDraftHandler.Status)
 			admin.POST("/rules/draft", ruleDraftHandler.Draft)
+			admin.POST("/rules/dry-run", ruleDryRunHandler.DryRun)
 			admin.POST("/rules", ruleHandler.CreateRule)
 			admin.GET("/rules", ruleHandler.GetRules)
 			admin.PUT("/rules/:id", ruleHandler.UpdateRule)

@@ -10,6 +10,16 @@ export interface RuleDraft {
     prompt_version: string;
 }
 
+/** What a draft rule would decide, from POST /admin/rules/dry-run. Nothing is saved. */
+export type DryRunOutcome = 'AUTO_APPROVED' | 'NEEDS_APPROVAL';
+
+export interface RuleDryRun {
+    current_condition: Record<string, number> | null;
+    draft_condition: Record<string, number>;
+    rows: { value: number; source: 'sample' | 'history'; current: DryRunOutcome; draft: DryRunOutcome }[];
+    summary: { history_total: number; current_auto: number; draft_auto: number; newly_auto: number; no_longer_auto: number };
+}
+
 export const adminService = {
     // Holidays
     async getHolidays(limit = 10, offset = 0): Promise<Holiday[]> {
@@ -63,6 +73,16 @@ export const adminService = {
     async draftRule(sentence: string): Promise<RuleDraft> {
         const response = await api.post<unknown>('/admin/rules/draft', { sentence });
         return unwrap<RuleDraft>(response.data);
+    },
+
+    async dryRunRule(rule: RuleDraft['rule'], values: number[]): Promise<RuleDryRun> {
+        const response = await api.post<unknown>('/admin/rules/dry-run', {
+            request_type: rule.request_type,
+            grade_id: rule.grade_id,
+            condition: rule.condition,
+            values,
+        });
+        return unwrap<RuleDryRun>(response.data);
     },
 
     async deleteRule(id: number): Promise<void> {

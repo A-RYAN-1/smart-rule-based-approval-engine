@@ -316,6 +316,53 @@ components:
       properties:
         sentence: { type: string, maxLength: 300, example: grade 2 expenses up to 8k }
 
+    RuleDryRunRequest:
+      type: object
+      required: [request_type, grade_id, condition]
+      properties:
+        request_type: { type: string, enum: [LEAVE, EXPENSE, DISCOUNT] }
+        grade_id: { type: integer, format: int64 }
+        condition:
+          type: object
+          description: The rule as it would be saved, for example max_amount 8000 for an expense rule.
+          additionalProperties: true
+        values:
+          type: array
+          maxItems: 20
+          description: Values to try (days, amount or percent), each above zero.
+          items: { type: number }
+
+    RuleDryRun:
+      type: object
+      properties:
+        current_condition:
+          type: object
+          nullable: true
+          description: The saved rule, or null when the grade has none (every request then needs approval).
+          additionalProperties: true
+        draft_condition:
+          type: object
+          additionalProperties: true
+        rows:
+          type: array
+          description: One row per typed sample value.
+          items:
+            type: object
+            properties:
+              value: { type: number }
+              source: { type: string, enum: [sample, history] }
+              current: { type: string, enum: [AUTO_APPROVED, NEEDS_APPROVAL] }
+              draft: { type: string, enum: [AUTO_APPROVED, NEEDS_APPROVAL] }
+        summary:
+          type: object
+          description: The newest 200 non-cancelled real requests of that type and grade, replayed.
+          properties:
+            history_total: { type: integer }
+            current_auto: { type: integer }
+            draft_auto: { type: integer }
+            newly_auto: { type: integer }
+            no_longer_auto: { type: integer }
+
     RuleDraft:
       type: object
       description: A proposal. Nothing is saved until the admin posts the rule to `POST /api/admin/rules`.
@@ -1205,6 +1252,39 @@ paths:
               schema: { $ref: '#/components/schemas/Envelope' }
         '503':
           description: Drafting is switched off
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Envelope' }
+
+  /api/admin/rules/dry-run:
+    post:
+      tags: [Admin]
+      summary: Try a rule before saving it
+      description: |
+        Decides the typed sample values and the newest real requests of that type and grade under
+        the saved rule and under the draft, using the same decision function as the request flow.
+        Nothing is saved. The draft is validated like `POST /api/admin/rules`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RuleDryRunRequest' }
+      responses:
+        '200':
+          description: Decisions under the saved rule and the draft
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/RuleDryRun' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: The draft value is above the grade limit or negative
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Envelope' }

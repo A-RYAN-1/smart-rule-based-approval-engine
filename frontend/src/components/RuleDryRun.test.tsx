@@ -55,6 +55,16 @@ describe('RuleDryRun', () => {
     expect(adminService.dryRunRule).not.toHaveBeenCalled();
   });
 
+  it('says request, not requests, for a single past request', async () => {
+    vi.mocked(adminService.dryRunRule).mockResolvedValue({
+      ...result,
+      summary: { history_total: 1, current_auto: 0, draft_auto: 1, newly_auto: 1, no_longer_auto: 0 },
+    });
+    render(<RuleDryRun rule={rule} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Test against recent requests' }));
+    expect(await screen.findByText(/Of the last 1 request,/)).toBeInTheDocument();
+  });
+
   it('says so when there are no past requests', async () => {
     vi.mocked(adminService.dryRunRule).mockResolvedValue({
       ...result,

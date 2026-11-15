@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { adminService, RuleDraft } from '@/services/admin.service';
 import { apiErrorMessage } from '@/lib/api';
 import { RequestType } from '@/types';
+import { RuleDryRun } from '@/components/RuleDryRun';
 
 const FIELD_LABEL: Record<string, string> = {
   max_days: 'Longest leave (working days)',
@@ -138,6 +139,7 @@ export function RuleDrafter({ onConfirm }: RuleDrafterProps) {
                 </>
               )}
             </p>
+            <RuleDryRun key={JSON.stringify(draft.rule)} rule={draft.rule} />
             <div className="flex gap-2">
               <Button onClick={() => void confirm()} disabled={busy}>
                 Confirm and save

@@ -23,7 +23,7 @@ var serverLevel = []string{
 func TestRoutesMatchSpec(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	Register(context.Background(), router, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	Register(context.Background(), router, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	var served []string
 	for _, r := range router.Routes() {

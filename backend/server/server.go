@@ -22,6 +22,7 @@ import (
 	"github.com/ankita-advitot/rule_based_approval_engine/app/my_requests"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/reports"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/rule_drafting"
+	"github.com/ankita-advitot/rule_based_approval_engine/app/rule_dryrun"
 	"github.com/ankita-advitot/rule_based_approval_engine/app/rules"
 	"github.com/ankita-advitot/rule_based_approval_engine/config"
 	jobs "github.com/ankita-advitot/rule_based_approval_engine/cron-jobs"
@@ -102,6 +103,9 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	ruleDraftHandler := rule_drafting.NewHandler(rule_drafting.NewService(
 		draftProvider, ruleService, repositories.NewGradeLister(ctx, db), ruleService, cfg.RuleDraftDailyLimit))
 
+	ruleDryRunHandler := rule_dryrun.NewHandler(rule_dryrun.NewService(
+		ruleService, ruleService, repositories.NewRuleHistory(db)))
+
 	router := gin.New()
 	router.Use(requestID(), requestLog(), gin.CustomRecovery(recovered))
 	if len(cfg.CORSOrigins) > 0 {
@@ -167,7 +171,7 @@ func New(ctx context.Context, cfg *config.Config) (*App, error) {
 	routes.Register(ctx, router,
 		authService, leaveService, expenseService, leaveApprovalService, expenseApprovalService,
 		ruleService, myRequestsService, holidayService, reportService, balanceService,
-		autoRejectService, discountService, discountApprovalService, ruleDraftHandler,
+		autoRejectService, discountService, discountApprovalService, ruleDraftHandler, ruleDryRunHandler,
 	)
 
 	return &App{Router: router, AutoReject: autoRejectService, Pool: pool}, nil

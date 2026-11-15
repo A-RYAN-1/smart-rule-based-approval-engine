@@ -73,7 +73,7 @@ export function RuleDryRun({ rule }: { rule: RuleDraft['rule'] }) {
             <p className="text-sm text-muted-foreground">No past requests of this type for this grade yet.</p>
           ) : (
             <p className="text-sm">
-              Of the last {summary.history_total} requests, the rule saved today approves{' '}
+              Of the last {summary.history_total} {summary.history_total === 1 ? 'request' : 'requests'}, the rule saved today approves{' '}
               <strong>{summary.current_auto}</strong>; this draft would approve <strong>{summary.draft_auto}</strong>
               {' '}({summary.newly_auto} more, {summary.no_longer_auto} fewer).
             </p>

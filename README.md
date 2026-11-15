@@ -100,7 +100,7 @@ whatever a visitor changes with the admin account is undone. You can also sign u
     <td width="50%"><img src="docs/images/admin-rules.png" alt="Admin rules management with the rule drafting box above the rules"><p align="center"><sub>Admin: one rule per request type and grade, with the drafting box on top</sub></p></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/images/admin-rule-draft.png" alt="A drafted rule shown as a before and after, with Confirm and save and Discard buttons"><p align="center"><sub>Admin: a sentence becomes a draft (expense limit for grade 2, 10000 to 8000) that is saved only on Confirm</sub></p></td>
+    <td colspan="2"><img src="docs/images/admin-rule-draft.png" alt="A drafted rule shown as a before and after, a Test before saving step with three typed values and their decisions, and Confirm and save and Discard buttons"><p align="center"><sub>Admin: a sentence becomes a draft (expense limit for grade 1, 5000 to 8000); Test before saving decides typed values and recent requests under the saved rule and the draft; nothing is saved until Confirm</sub></p></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/images/api-docs.png" alt="Swagger UI at /api/docs listing the operations, auth and leave endpoints of the API"><p align="center"><sub>The API reference at /api/docs, served by the app and checked against its routes</sub></p></td>

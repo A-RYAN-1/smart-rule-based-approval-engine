@@ -143,6 +143,41 @@ func TestMainFlow(t *testing.T) {
 		t.Fatalf("long leave should be pending: %v", out)
 	}
 
+	// Every request says why it has its status: the rule and the limit that
+	// applied at submission.
+	_, mine := call("GET", "/api/my-requests/all", employee, nil)
+	leaves := mine["data"].(map[string]any)["leave_request"].([]any)
+	got := map[string]string{}
+	for _, l := range leaves {
+		row := l.(map[string]any)
+		d, ok := row["decision"].(map[string]any)
+		if !ok {
+			t.Fatalf("leave %v has no decision: %v", row["id"], row)
+		}
+		if d["rule_id"] == nil || d["limit"] != float64(3) {
+			t.Fatalf("decision lacks rule or limit: %v", d)
+		}
+		got[fmt.Sprint(row["status"])] = fmt.Sprint(d["kind"])
+	}
+	if got["AUTO_APPROVED"] != "AUTO_APPROVED" || got["PENDING"] != "SENT_TO_PERSON" {
+		t.Fatalf("decision kinds by status: %v", got)
+	}
+	// The per-type list and the manager's pending list explain it too.
+	_, perType := call("GET", "/api/leaves/my", employee, nil)
+	for _, l := range perType["data"].(map[string]any)["requests"].([]any) {
+		if _, ok := l.(map[string]any)["decision"].(map[string]any); !ok {
+			t.Fatalf("per-type leave has no decision: %v", l)
+		}
+	}
+	_, pendingAll := call("GET", "/api/pending/all", manager, nil)
+	pend := pendingAll["data"].(map[string]any)["leave_request"].([]any)
+	if len(pend) == 0 {
+		t.Fatalf("manager sees no pending leave: %v", pendingAll)
+	}
+	if d, ok := pend[0].(map[string]any)["decision"].(map[string]any); !ok || d["kind"] != "SENT_TO_PERSON" {
+		t.Fatalf("pending leave decision: %v", pend[0])
+	}
+
 	code, out := call("GET", "/api/leaves/pending", manager, nil)
 	if code != http.StatusOK {
 		t.Fatalf("pending: %d %v", code, out)

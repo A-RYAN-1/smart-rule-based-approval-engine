@@ -15,8 +15,8 @@ import (
 
 const (
 	leaveQueryCreate = `INSERT INTO leave_requests
-		 (employee_id, from_date, to_date, days, reason, leave_type, status, rule_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		 (employee_id, from_date, to_date, days, reason, leave_type, status, rule_id, rule_limit)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	leaveQueryGetByID = `SELECT employee_id, status, from_date, to_date, days
 		 FROM leave_requests
 		 WHERE id=$1`
@@ -71,6 +71,7 @@ func (r *leaveRequestRepository) Create(ctx context.Context, tx interfaces.Tx, r
 		req.LeaveType,
 		req.Status,
 		req.RuleID,
+		req.RuleLimit,
 	)
 
 	return utils.MapPgError(err)

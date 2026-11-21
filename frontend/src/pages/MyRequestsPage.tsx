@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdmin } from '@/hooks/useAdmin';
 import { Navigate } from 'react-router-dom';
 import { StatusBadge, RequestTypeBadge } from '@/components/ui/status-badge';
+import { DecisionNote } from '@/components/DecisionNote';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -417,6 +418,8 @@ export default function MyRequestsPage() {
                       {selectedRequest.reason && selectedRequest.reason !== 'No reason found' ? selectedRequest.reason : 'No additional context provided for this request.'}
                     </p>
                   </div>
+
+                  <DecisionNote decision={selectedRequest.decision} />
 
                   {(selectedRequest.status === 'approved' || selectedRequest.status === 'rejected') && (
                     <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">

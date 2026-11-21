@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	helperQueryGetMyLeaves = `SELECT id, leave_type, from_date, to_date, days, status, reason, approval_comment, created_at
+	helperQueryGetMyLeaves = `SELECT id, leave_type, from_date, to_date, days, status, reason, approval_comment, created_at, rule_id, rule_limit
 		 FROM leave_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`
-	helperQueryGetMyExpenses = `SELECT id, amount, category, status, reason, approval_comment, created_at
+	helperQueryGetMyExpenses = `SELECT id, amount, category, status, reason, approval_comment, created_at, rule_id, rule_limit
 		 FROM expense_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`
-	helperQueryGetMyDiscounts = `SELECT id, discount_percentage, status, reason, approval_comment, created_at
+	helperQueryGetMyDiscounts = `SELECT id, discount_percentage, status, reason, approval_comment, created_at, rule_id, rule_limit
 		 FROM discount_requests
 		 WHERE employee_id = $1
 		 ORDER BY created_at DESC`
@@ -109,6 +109,8 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			reason    string
 			comment   *string
 			createdAt time.Time
+			ruleID    *int64
+			ruleLimit *float64
 		)
 
 		if err := rows.Scan(
@@ -121,6 +123,8 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			&reason,
 			&comment,
 			&createdAt,
+			&ruleID,
+			&ruleLimit,
 		); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
@@ -134,6 +138,7 @@ func (r *myRequestsRepository) GetMyLeaveRequests(ctx context.Context, userID in
 			"status":     status,
 			"reason":     reason,
 			"created_at": createdAt.Format(time.RFC3339),
+			"decision":   utils.ExplainDecision("LEAVE", status, ruleID, ruleLimit, float64(days)),
 		}
 
 		if comment != nil {
@@ -180,6 +185,8 @@ func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID 
 			reason    string
 			comment   *string
 			createdAt time.Time
+			ruleID    *int64
+			ruleLimit *float64
 		)
 
 		if err := rows.Scan(
@@ -190,6 +197,8 @@ func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID 
 			&reason,
 			&comment,
 			&createdAt,
+			&ruleID,
+			&ruleLimit,
 		); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
@@ -202,6 +211,7 @@ func (r *myRequestsRepository) GetMyExpenseRequests(ctx context.Context, userID 
 			"reason":           reason,
 			"approval_comment": comment,
 			"created_at":       createdAt.Format(time.RFC3339),
+			"decision":         utils.ExplainDecision("EXPENSE", status, ruleID, ruleLimit, amount),
 		})
 	}
 
@@ -235,6 +245,8 @@ func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID
 			reason    string
 			comment   *string
 			createdAt time.Time
+			ruleID    *int64
+			ruleLimit *float64
 		)
 
 		if err := rows.Scan(
@@ -244,6 +256,8 @@ func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID
 			&reason,
 			&comment,
 			&createdAt,
+			&ruleID,
+			&ruleLimit,
 		); err != nil {
 			return nil, total, utils.MapPgError(err)
 		}
@@ -255,6 +269,7 @@ func (r *myRequestsRepository) GetMyDiscountRequests(ctx context.Context, userID
 			"reason":              reason,
 			"approval_comment":    comment,
 			"created_at":          createdAt.Format(time.RFC3339),
+			"decision":            utils.ExplainDecision("DISCOUNT", status, ruleID, ruleLimit, percent),
 		})
 	}
 

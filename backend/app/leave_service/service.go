@@ -144,6 +144,7 @@ func (s *LeaveService) ApplyLeave(
 		LeaveType:  leaveType,
 		Status:     status,
 		RuleID:     &rule.ID,
+		RuleLimit:  utils.RuleLimit("LEAVE", rule.Condition),
 	}
 
 	err = s.leaveReqRepo.Create(ctx, tx, leaveReq)

@@ -14,8 +14,8 @@ import (
 
 const (
 	discountQueryCreate = `INSERT INTO discount_requests
-		 (employee_id, discount_percentage, reason, status, rule_id)
-		 VALUES ($1, $2, $3, $4, $5)`
+		 (employee_id, discount_percentage, reason, status, rule_id, rule_limit)
+		 VALUES ($1, $2, $3, $4, $5, $6)`
 	discountQueryGetByID = `SELECT id, employee_id, discount_percentage, reason, status, rule_id, approved_by_id, created_at
 		 FROM discount_requests WHERE id=$1`
 	discountQueryUpdateStatus = `UPDATE discount_requests
@@ -55,7 +55,7 @@ func (r *discountRequestRepository) Create(ctx context.Context, tx interfaces.Tx
 	_, err := tx.Exec(
 		ctx,
 		discountQueryCreate,
-		req.EmployeeID, req.DiscountPercentage, req.Reason, req.Status, req.RuleID,
+		req.EmployeeID, req.DiscountPercentage, req.Reason, req.Status, req.RuleID, req.RuleLimit,
 	)
 	return utils.MapPgError(err)
 }

@@ -1,4 +1,4 @@
-import { LeaveRequest, ExpenseRequest, DiscountRequest, Holiday, RequestStatus, ApprovalRule, LeaveType, RuleCondition } from '@/types';
+import { LeaveRequest, ExpenseRequest, DiscountRequest, Decision, DecisionKind, Holiday, RequestStatus, ApprovalRule, LeaveType, RuleCondition } from '@/types';
 import type { RawRecord } from '@/lib/api';
 
 export const normalizeStatus = (status: string | undefined | null): RequestStatus => {
@@ -52,6 +52,22 @@ const FROM_DATE_KEYS = ['from_date', 'fromDate', 'start_date', 'startDate'];
 const TO_DATE_KEYS = ['to_date', 'toDate', 'end_date', 'endDate'];
 
 
+const DECISION_KINDS: DecisionKind[] = ['AUTO_APPROVED', 'SENT_TO_PERSON', 'AUTO_REJECTED'];
+
+export const transformDecision = (raw: unknown): Decision | undefined => {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const d = raw as RawRecord;
+    const kind = DECISION_KINDS.find((k) => k === d.kind);
+    const text = str(d.text);
+    if (!kind || !text) return undefined;
+    return {
+        kind,
+        text,
+        ruleId: d.rule_id === null || d.rule_id === undefined ? undefined : num(d.rule_id),
+        limit: d.limit === null || d.limit === undefined ? undefined : num(d.limit),
+    };
+};
+
 export const transformLeaveRequest = (data: RawRecord): LeaveRequest => {
     const created = safeExtractDate(data, DATE_KEYS);
     const reason = safeExtractString(data, REASON_KEYS);
@@ -68,6 +84,7 @@ export const transformLeaveRequest = (data: RawRecord): LeaveRequest => {
         reason: reason || 'No reason found',
         status: normalizeStatus(str(data.status)),
         statusReason: comment,
+        decision: transformDecision(data.decision),
         createdAt: created || FALLBACK_DATE,
         updatedAt: safeExtractDate(data, ['updated_at', 'updatedAt']) || created || FALLBACK_DATE,
     };
@@ -88,6 +105,7 @@ export const transformExpenseRequest = (data: RawRecord): ExpenseRequest => {
         reason: reason || 'No reason found',
         status: normalizeStatus(str(data.status)),
         statusReason: comment,
+        decision: transformDecision(data.decision),
         createdAt: created || FALLBACK_DATE,
         updatedAt: safeExtractDate(data, ['updated_at', 'updatedAt']) || created || FALLBACK_DATE,
     };
@@ -107,6 +125,7 @@ export const transformDiscountRequest = (data: RawRecord): DiscountRequest => {
         reason: reason || 'No reason found',
         status: normalizeStatus(str(data.status)),
         statusReason: comment,
+        decision: transformDecision(data.decision),
         createdAt: created || FALLBACK_DATE,
         updatedAt: safeExtractDate(data, ['updated_at', 'updatedAt']) || created || FALLBACK_DATE,
     };

@@ -197,6 +197,16 @@ components:
       properties:
         comment: { type: string, description: "Required on reject", example: Over the team limit }
 
+    Decision:
+      type: object
+      nullable: true
+      description: "Why the request has its status. Present on a requester's own lists and on /pending/all; null for a cancelled request."
+      properties:
+        kind: { type: string, enum: [AUTO_APPROVED, SENT_TO_PERSON, AUTO_REJECTED] }
+        rule_id: { type: integer, format: int64, nullable: true, description: "The rule that routed the request" }
+        limit: { type: number, nullable: true, description: "The limit of that rule when the request was filed; null for requests filed before limits were recorded" }
+        text: { type: string, example: "Approved by the system: 2 days is within the limit of 3 days set by rule #7." }
+
     LeaveRequestItem:
       type: object
       properties:
@@ -209,6 +219,7 @@ components:
         status: { $ref: '#/components/schemas/RequestStatus' }
         approval_comment: { type: string }
         created_at: { type: string, format: date-time }
+        decision: { $ref: '#/components/schemas/Decision' }
         employee: { type: string, description: "Name of the requester; pending lists only" }
         user_id: { type: integer, format: int64, description: "Requester; pending lists only" }
 
@@ -222,6 +233,7 @@ components:
         status: { $ref: '#/components/schemas/RequestStatus' }
         approval_comment: { type: string }
         created_at: { type: string, format: date-time }
+        decision: { $ref: '#/components/schemas/Decision' }
         employee: { type: string, description: "Pending lists only" }
         user_id: { type: integer, format: int64, description: "Pending lists only" }
 
@@ -234,6 +246,7 @@ components:
         status: { $ref: '#/components/schemas/RequestStatus' }
         approval_comment: { type: string }
         created_at: { type: string, format: date-time }
+        decision: { $ref: '#/components/schemas/Decision' }
         employee: { type: string, description: "Pending lists only" }
         user_id: { type: integer, format: int64, description: "Pending lists only" }
 

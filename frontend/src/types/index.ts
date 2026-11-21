@@ -13,6 +13,16 @@ export interface User {
   role: UserRole;
 }
 
+export type DecisionKind = 'AUTO_APPROVED' | 'SENT_TO_PERSON' | 'AUTO_REJECTED';
+
+/** Why a request has its status: the rule and the limit that applied when it was filed. */
+export interface Decision {
+  kind: DecisionKind;
+  ruleId?: number;
+  limit?: number;
+  text: string;
+}
+
 export interface LeaveRequest {
   id: number;
   userId: number;
@@ -24,6 +34,7 @@ export interface LeaveRequest {
   reason: string;
   status: RequestStatus;
   statusReason?: string;
+  decision?: Decision;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +48,7 @@ export interface ExpenseRequest {
   reason: string;
   status: RequestStatus;
   statusReason?: string;
+  decision?: Decision;
   createdAt: string;
   updatedAt: string;
 }
@@ -49,6 +61,7 @@ export interface DiscountRequest {
   reason: string;
   status: RequestStatus;
   statusReason?: string;
+  decision?: Decision;
   createdAt: string;
   updatedAt: string;
 }

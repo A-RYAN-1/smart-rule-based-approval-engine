@@ -100,6 +100,7 @@ func (s *ExpenseService) ApplyExpense(
 		Reason:     reason,
 		Status:     status,
 		RuleID:     &rule.ID,
+		RuleLimit:  utils.RuleLimit("EXPENSE", rule.Condition),
 	}
 
 	err = s.expenseReqRepo.Create(ctx, tx, expenseReq)

@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
+import { DecisionNote } from '@/components/DecisionNote';
 import {
   Dialog,
   DialogContent,
@@ -378,6 +379,8 @@ export default function PendingApprovalsPage() {
                   <p className="text-sm font-medium">{getRequestDetails(selectedRequest)}</p>
                   <p className="text-sm text-muted-foreground mt-1">{selectedRequest.reason}</p>
                 </div>
+
+                <DecisionNote decision={selectedRequest.decision} />
 
                 <div className="space-y-2">
                   <Label>Comment (optional)</Label>

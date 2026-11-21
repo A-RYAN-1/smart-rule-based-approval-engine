@@ -13,5 +13,6 @@ type LeaveRequest struct {
 	Status       string
 	ApprovedByID *int64
 	RuleID       *int64
+	RuleLimit    *float64
 	CreatedAt    time.Time
 }

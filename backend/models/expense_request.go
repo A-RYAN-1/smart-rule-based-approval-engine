@@ -10,6 +10,7 @@ type ExpenseRequest struct {
 	Reason       string
 	Status       string
 	RuleID       *int64
+	RuleLimit    *float64
 	ApprovedByID *int64
 	CreatedAt    time.Time
 }

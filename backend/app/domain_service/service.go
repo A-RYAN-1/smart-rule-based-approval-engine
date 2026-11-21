@@ -91,6 +91,7 @@ func (s *DiscountService) ApplyDiscount(
 		Reason:             reason,
 		Status:             status,
 		RuleID:             &rule.ID,
+		RuleLimit:          utils.RuleLimit("DISCOUNT", rule.Condition),
 	}
 
 	err = s.discountReqRepo.Create(ctx, tx, discountReq)

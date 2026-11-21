@@ -36,7 +36,7 @@
   </a>
 </p>
 
-<p align="center"><sub>Last updated: 2026-11-15 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
+<p align="center"><sub>Last updated: 2026-11-21 &middot; Live in production on free tiers (Vercel and Neon)</sub></p>
 
 ---
 
@@ -96,8 +96,11 @@ whatever a visitor changes with the admin account is undone. You can also sign u
     <td width="50%"><img src="docs/images/leave-request.png" alt="Leave request form with the employee's leave balance"><p align="center"><sub>Leave request with the live balance</sub></p></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/images/pending-approvals.png" alt="Manager's queue of requests awaiting review"><p align="center"><sub>Manager: requests the rules sent for review</sub></p></td>
-    <td width="50%"><img src="docs/images/admin-rules.png" alt="Admin rules management with the rule drafting box above the rules"><p align="center"><sub>Admin: one rule per request type and grade, with the drafting box on top</sub></p></td>
+    <td width="50%"><img src="docs/images/pending-approvals.png" alt="Manager's approve dialog for a 10-day leave, with the line Sent to a person: 10 days is over the limit of 3 days set by a rule"><p align="center"><sub>Manager: a request the rules sent for review, with the limit that sent it</sub></p></td>
+    <td width="50%"><img src="docs/images/my-requests-decision.png" alt="Employee's request overview showing Sent to a person and the rule and limit behind it"><p align="center"><sub>Employee: why a request is pending, from the rule and limit stored when it was filed</sub></p></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/admin-rules.png" alt="Admin rules management with the rule drafting box above the rules"><p align="center"><sub>Admin: one rule per request type and grade, with the drafting box on top</sub></p></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/images/admin-rule-draft.png" alt="A drafted rule shown as a before and after, a Test before saving step with three typed values and their decisions, and Confirm and save and Discard buttons"><p align="center"><sub>Admin: a sentence becomes a draft (expense limit for grade 1, 5000 to 8000); Test before saving decides typed values and recent requests under the saved rule and the draft; nothing is saved until Confirm</sub></p></td>
@@ -129,6 +132,10 @@ whatever a visitor changes with the admin account is undone. You can also sign u
   admin types and the newest 200 real requests of that type and grade under the rule saved today and under
   the draft, with the same decision function the request flow uses, and returns how many more or fewer
   would be approved by the system. It never writes; see [docs/rule-dry-run.md](docs/rule-dry-run.md).
+- **Decision explanation**: every request says why it has its status: "Approved by the system: 2 days is
+  within the limit of 3 days set by rule #7", or "Sent to a person: 10 days is over the limit of 3 days set by
+  rule #7". The limit is stored when the request is filed, so editing a rule later does not rewrite the
+  history. Shown to the employee and to the approver; see [docs/decision-explanation.md](docs/decision-explanation.md).
 - **API reference**: Swagger UI at `/api/docs` and the OpenAPI 3 document at `/api/docs/openapi.yaml`,
   written from the handlers and the real responses (the response envelope, roles, statuses, error
   codes). A test compares the document with the registered routes in both directions, so a new route
@@ -380,6 +387,9 @@ runs the nightly job in-process.
   would have decided then; it does not model balances, overlap or approver rules, and a grade with no
   history shows only the typed values.
 - Requests made before 2026-10-22 keep the calendar-day count they were applied with.
+- Requests filed before 2026-11-21 have no stored limit, so their explanation names the rule and says the limit
+  was not recorded (checked on the demo, 2026-11-21). The explanation is on the requester's own lists and
+  the combined pending list; the per-type pending lists do not carry it.
 - Lighthouse and accessibility checks cover the sign-in page only; the pages behind login have not been audited.
 - The API reference describes status codes and field names from the handlers and the demo's real
   responses (2026-11-13), not generated examples. The three `/my` list routes always return the first
